@@ -6,13 +6,13 @@
 
 ```mermaid
 graph TD
-    subgraph "Dev Environment"
+    subgraph "开发环境"
         Dev[VS Code / Cursor]
         Copilot[GitHub Copilot]
         Dev -.->|Agent 模式 / MCP| Copilot
     end
 
-    subgraph "Frontend Layer"
+    subgraph "前端交互层"
         Next[Next.js 16.x]
         AntX["Ant Design X<br/>(Sender, Bubble, XStream)"]
         MD["@ant-design/x-markdown<br/>(流式渲染)"]
@@ -20,47 +20,47 @@ graph TD
         AntX --> MD
     end
 
-    subgraph "Application Layer"
-        Dify["Dify<br/>(Orchestration / RAG)"]
-        Spring["Spring AI Alibaba<br/>(Agent Framework)"]
+    subgraph "应用编排层"
+        Dify["Dify<br/>(可视化编排 / RAG)"]
+        Spring["Spring AI Alibaba<br/>(Agent 框架)"]
         MultiAgent[多智能体编排]
         Dify <-->|API / MCP| Spring
         Spring --> MultiAgent
     end
 
-    subgraph "Data Pipeline (ETL)"
-        Raw[Raw Documents]
+    subgraph "数据处理层 (ETL)"
+        Raw[原始文档]
         Unstructured["Unstructured.io<br/>(64+ 格式 / VLM)"]
         Chunks[语义切片]
         Raw --> Unstructured
         Unstructured --> Chunks
     end
 
-    subgraph "Storage Layer"
-        Milvus[("Milvus<br/>(Vector DB)")]
+    subgraph "存储层"
+        Milvus[("Milvus<br/>(向量数据库)")]
         PG[("PostgreSQL<br/>+ pgvector")]
         Chunks --> Milvus
         Spring --> Milvus
         Spring --> PG
     end
 
-    subgraph "Model Serving Layer"
-        vLLM["vLLM v1.0<br/>(Production / MoE)"]
-        Ollama["Ollama<br/>(Local / GGUF)"]
+    subgraph "模型推理层"
+        vLLM["vLLM v1.0<br/>(生产部署 / MoE)"]
+        Ollama["Ollama<br/>(本地开发 / GGUF)"]
         Qwen["通义千问 / DeepSeek"]
         Spring --> vLLM
         Spring --> Ollama
         Spring -.-> Qwen
     end
 
-    subgraph "LLMOps & QA"
-        LangFuse["LangFuse<br/>(Tracing / MCP / Multi-Modal)"]
-        Promptfoo["Promptfoo<br/>(Testing / Guardrails)"]
+    subgraph "LLMOps 与质量保障"
+        LangFuse["LangFuse<br/>(链路追踪 / MCP / 多模态)"]
+        Promptfoo["Promptfoo<br/>(测试评估 / 护栏)"]
         Spring -.-> LangFuse
         Dify -.-> LangFuse
     end
 
-    subgraph "Infrastructure"
+    subgraph "基础设施层"
         Docker[Docker 24.x]
         K8s[Kubernetes 1.30.x]
         Helm[Helm Chart]
@@ -68,7 +68,7 @@ graph TD
         K8s --> Helm
     end
 
-    User((User)) --> Next
+    User((用户)) --> Next
     Next --> Dify
     Next --> Spring
     Promptfoo -.->|回归测试| Spring
