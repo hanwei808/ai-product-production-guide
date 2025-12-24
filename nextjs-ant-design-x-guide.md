@@ -2,6 +2,33 @@
 
 本文档旨在介绍 React 生态中最流行的全栈框架 **Next.js**，以及 Ant Design 团队专为 AI 场景打造的组件库 **Ant Design X**，并探讨如何结合两者快速构建高质量的 AI 应用前端。
 
+```mermaid
+graph TD
+    User((用户))
+
+    subgraph Client ["客户端 (Browser)"]
+        UI["Ant Design X UI<br/>(Sender, Bubble)"]
+        Logic["useXChat<br/>(状态管理)"]
+    end
+
+    subgraph Server ["服务端 (Next.js)"]
+        API["API Route / Server Action"]
+    end
+
+    subgraph AI ["AI 服务"]
+        LLM["大模型 API<br/>(OpenAI, DeepSeek...)"]
+    end
+
+    User -->|输入| UI
+    UI -->|触发| Logic
+    Logic -->|请求| API
+    API -->|调用| LLM
+    LLM -.->|流式响应 SSE| API
+    API -.->|流式转发| Logic
+    Logic -.->|实时渲染| UI
+    UI -.->|展示| User
+```
+
 ## 1. Next.js：React 框架的集大成者
 
 Next.js 是由 Vercel 开发的开源 React 框架，它解决了传统 React 单页应用 (SPA) 在 SEO、首屏加载速度和路由管理上的痛点，是目前构建生产级 React 应用的首选方案。
@@ -76,41 +103,66 @@ npm install antd @ant-design/x @ant-design/icons
 **代码片段 (page.tsx)**：
 
 ```tsx
-import { Bubble, Sender, XProvider } from '@ant-design/x'
-import { useState } from 'react'
+import { Bubble, Sender, XProvider, useXChat } from '@ant-design/x'
 
 export default function AIChatPage() {
-  const [messages, setMessages] = useState([])
-
-  const handleSubmit = async (content) => {
-    // 1. 添加用户消息
-    setMessages((prev) => [...prev, { role: 'user', content }])
-
-    // 2. 调用 Next.js API Route 获取 AI 响应 (模拟)
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      body: JSON.stringify({ content })
-    })
-    const data = await response.json()
-
-    // 3. 添加 AI 消息
-    setMessages((prev) => [...prev, { role: 'ai', content: data.reply }])
-  }
+  // 使用 useXChat 钩子管理对话状态，开箱即用
+  const { messages, onRequest, isRequesting } = useXChat({
+    // 定义请求逻辑
+    request: async (content) => {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ content })
+      })
+      const data = await response.json()
+      return data.reply
+    }
+  })
 
   return (
     <XProvider>
       <div style={{ maxWidth: 800, margin: '0 auto', padding: 20 }}>
-        {messages.map((msg, idx) => (
+        {messages.map((msg) => (
           <Bubble
-            key={idx}
+            key={msg.id}
             placement={msg.role === 'user' ? 'end' : 'start'}
             content={msg.content}
+            loading={msg.status === 'loading'}
           />
         ))}
-        <Sender onSubmit={handleSubmit} />
+        <Sender loading={isRequesting} onSubmit={onRequest} />
       </div>
     </XProvider>
   )
+}
+```
+
+### 进阶：实现流式响应 (Streaming)
+
+为了提供更好的用户体验，建议在 `request` 方法中处理流式响应。Next.js 的 API Routes 可以轻松返回 `ReadableStream`，而 `useXChat` 可以配合处理增量更新。
+
+```tsx
+// 示例：在 request 中处理流式数据
+request: async (content, { onUpdate }) => {
+  const response = await fetch('/api/chat/stream', {
+    method: 'POST',
+    body: JSON.stringify({ content })
+  })
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let result = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    const chunk = decoder.decode(value, { stream: true })
+    result += chunk
+    // 实时更新 UI
+    onUpdate(result)
+  }
+
+  return result
 }
 ```
 

@@ -2,6 +2,30 @@
 
 本文档旨在介绍现代云计算和微服务架构中不可或缺的两大核心技术：**Docker**（容器化标准）和 **Kubernetes**（容器编排霸主），帮助开发者理解它们如何改变了软件交付与运行的方式。
 
+```mermaid
+graph LR
+    subgraph Dev [开发构建]
+        Code[源代码] --> Dockerfile
+        Dockerfile -->|docker build| Image[Docker 镜像]
+    end
+
+    subgraph Dist [分发]
+        Image -->|docker push| Registry[镜像仓库]
+    end
+
+    subgraph Run [K8s 生产环境]
+        Registry -->|K8s Pull| Node[K8s 节点]
+        Node --> Pod[Pod]
+        Pod -->|包含| Container[容器]
+
+        Deployment -->|管理| Pod
+        Service -->|负载均衡| Pod
+        Ingress -->|路由规则| Service
+    end
+
+    User[用户] -->|访问| Ingress
+```
+
 ## 1. Docker：应用交付的标准集装箱
 
 Docker 是一种开源的容器化平台，它将应用程序及其所有依赖项（代码、运行时、系统工具、库）打包到一个轻量级、可移植的容器中。
@@ -23,6 +47,13 @@ Docker 是一种开源的容器化平台，它将应用程序及其所有依赖�
 - **轻量高效**：直接利用宿主机内核，无需模拟硬件和运行完整操作系统，启动快，密度高。
 - **敏捷交付**：配合 CI/CD 流水线，可以实现分钟级的应用构建与部署。
 
+### Docker Compose：多容器编排利器
+
+在开发环境中，一个应用往往由多个服务组成（如 Web 应用 + 数据库 + 缓存）。**Docker Compose** 是一个用于定义和运行多容器 Docker 应用程序的工具。
+
+- 通过一个 YAML 文件来配置应用的所有服务。
+- 使用一个命令，就可以从配置中创建并启动所有服务。
+
 ---
 
 ## 2. Kubernetes (K8s)：容器舰队的指挥官
@@ -41,6 +72,17 @@ Kubernetes（常简称为 K8s）是 Google 开源的容器编排平台，用于�
   - 定义应用的期望状态（如：我要运行 3 个 Nginx 副本）。K8s 会自动维持这个状态，如果有一个挂了，它会自动补一个新的。
 - **Service**：
   - 为一组 Pod 提供统一的访问入口（负载均衡）。无论 Pod 的 IP 如何变化，Service 的 IP 始终稳定。
+- **Ingress**：
+  - 管理外部访问集群内服务的规则（通常是 HTTP/HTTPS），提供 URL 路由、SSL 终端等功能。
+- **Namespace (命名空间)**：
+  - 用于在同一集群中隔离资源，类似于“虚拟集群”。常用于区分开发、测试、生产环境。
+- **ConfigMap & Secret**：
+  - **ConfigMap** 用于存储非机密的配置数据（如配置文件）。
+  - **Secret** 用于存储敏感数据（如密码、Token），并进行加密。
+  - 实现了配置与代码的分离。
+- **Volume (存储卷)**：
+  - 解决了容器重启后数据丢失的问题。
+  - **PV (PersistentVolume)** 和 **PVC (PersistentVolumeClaim)** 提供了持久化存储的抽象，让应用可以使用云盘、NFS 等存储资源。
 
 ### 核心能力
 
@@ -48,6 +90,13 @@ Kubernetes（常简称为 K8s）是 Google 开源的容器编排平台，用于�
 - **自我修复 (Self-healing)**：当容器失败、节点故障时，自动重启或重新调度容器，保证服务高可用。
 - **服务发现与负载均衡**：自动为容器分配 IP 和 DNS 名，并在它们之间分配流量。
 - **滚动更新与回滚**：在不中断服务的情况下更新应用版本，如果出问题还能一键回滚。
+
+### Kubernetes 的包管理器：Helm
+
+**Helm** 是 Kubernetes 的包管理工具，类似于 Linux 的 `apt` 或 `yum`。
+
+- **Chart**：Helm 的打包格式，包含了一组相关的 K8s 资源定义。
+- **优势**：简化了复杂应用的部署和管理，支持版本控制和一键升级/回滚。
 
 ---
 

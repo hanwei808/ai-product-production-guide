@@ -2,6 +2,25 @@
 
 本文档旨在介绍两款在大模型（LLM）推理领域极具代表性的工具：**Ollama**（最易用的本地运行工具）和 **vLLM**（最高效的生产级推理引擎），帮助开发者根据场景选择合适的部署方案。
 
+### 快速选型决策图
+
+```mermaid
+flowchart TD
+    Start([🚀 开始选型]) --> Q1{你的主要目标是?}
+
+    Q1 -->|个人娱乐 / 本地开发 / 边缘计算| PathA[客户端场景]
+    Q1 -->|企业服务 / 高并发推理 / 降本增效| PathB[服务端场景]
+
+    PathA --> Q2{硬件环境?}
+    Q2 -->|Mac / Windows / 消费级显卡| ResA["✅ **选 Ollama**<br>(极致易用 / GGUF兼容)"]
+
+    PathB --> Q3{核心诉求?}
+    Q3 -->|追求极致吞吐 Throughput & 低延迟| ResB["✅ **选 vLLM**<br>(PagedAttention / 生产级)"]
+
+    style ResA fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style ResB fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+```
+
 ## 1. Ollama：让大模型触手可及
 
 Ollama 是目前最流行的本地大模型运行工具，它极大地简化了在个人电脑（Mac, Linux, Windows）上下载、运行和管理开源大模型的过程。
@@ -13,6 +32,9 @@ Ollama 是目前最流行的本地大模型运行工具，它极大地简化了�
   - 运行模型只需 `ollama run llama3`，自动处理模型下载、权重加载和环境配置。
 - **丰富的模型库**：
   - 拥有类似 Docker Hub 的模型仓库，支持 Llama 3, Mistral, Gemma, Qwen 等主流开源模型。
+  - **多模态支持**：支持 LLaVA 等视觉模型，可进行图像分析。
+- **核心技术 (GGUF)**：
+  - 基于 `llama.cpp`，使用 **GGUF** 量化格式。这种格式专为 CPU 和 Apple Silicon (统一内存) 优化，使得在消费级硬件上运行大模型成为可能。
 - **Modelfile**：
   - 引入了类似 Dockerfile 的 `Modelfile` 概念，允许用户通过简单的配置文件自定义模型（设置系统提示词、调整参数、打包微调权重）。
 - **标准 API**：
@@ -38,6 +60,9 @@ vLLM 是一个开源的大模型推理和服务引擎，以其惊人的推理速
   - 在并发场景下，vLLM 的吞吐量通常是 HuggingFace Transformers 的 10-20 倍。
 - **Continuous Batching**：
   - 支持连续批处理，即在一个请求处理完生成后，立即插入新的请求，而不是等待整个 Batch 完成，显著降低延迟。
+- **高级量化与分布式推理**：
+  - **量化支持**：原生支持 AWQ, GPTQ, Marlin 等量化方法，在保持精度的同时降低显存占用。
+  - **Tensor Parallelism (张量并行)**：支持多 GPU 分布式推理，能够将巨大的模型（如 Llama 3 70B）切分到多张显卡上运行。
 - **OpenAI 兼容 API**：
   - 提供与 OpenAI API 完全兼容的接口服务器，这意味着你可以直接用 vLLM 替换 OpenAI 的后端，而无需修改客户端代码。
 
@@ -58,6 +83,8 @@ vLLM 是一个开源的大模型推理和服务引擎，以其惊人的推理速
 | **定位**     | **个人/开发者工具** (Client-side)     | **服务端推理引擎** (Server-side)         |
 | **上手难度** | 极低 (傻瓜式操作)                     | 中等 (需要 Python/Docker 环境)           |
 | **显存管理** | 简单，适合单任务                      | **PagedAttention**，极致优化，适合高并发 |
+| **量化格式** | **GGUF** (CPU/Mac 友好)               | **AWQ/GPTQ/FP16** (GPU 友好)             |
+| **多卡支持** | 基础支持 (主要用于分担显存)           | **Tensor Parallelism** (高性能并行计算)  |
 | **主要优势** | 易用性、Modelfile 定制                | **吞吐量**、并发性能、显存利用率         |
 | **典型硬件** | MacBook, 消费级 PC (NVIDIA/AMD/Intel) | 数据中心 GPU (A100, H100, 4090 等)       |
 

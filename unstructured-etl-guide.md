@@ -2,6 +2,14 @@
 
 本文档旨在介绍 AI 数据处理领域的关键概念 **ETL**，以及在非结构化数据处理方面表现卓越的工具 **Unstructured.io**，帮助开发者理解如何为 LLM 应用（如 RAG）准备高质量的数据。
 
+```mermaid
+graph LR
+    Docs["非结构化文档<br/>(PDF/Word/PPT)"] -->|Extract| ETL["Unstructured.io<br/>(解析与清洗)"]
+    ETL -->|Transform| Chunks["语义切片<br/>(Chunking)"]
+    Chunks -->|Load| VDB[("向量数据库")]
+    VDB <-->|Retrieval| App["LLM 应用<br/>(RAG)"]
+```
+
 ## 1. ETL：数据处理的基石
 
 ETL 是数据仓库和大数据领域最经典的概念，代表了数据从源头到目标的三个核心步骤：**Extract（抽取）、Transform（转换）、Load（加载）**。在 AI 时代，ETL 的内涵发生了演变，被称为 **ETL for LLMs**。
@@ -17,6 +25,13 @@ ETL 是数据仓库和大数据领域最经典的概念，代表了数据从源�
 3.  **Load (加载)**：
     - 将处理好的数据写入目标存储。
     - _AI 场景挑战_：目标通常是**向量数据库** (Milvus, Pinecone) 或图数据库，而非传统的数据仓库。
+
+### 关键转换步骤：Chunking (切分)
+
+在 Transform 阶段，**Chunking** 是最关键的一环。直接将长文档喂给 LLM 会导致上下文窗口溢出或检索精度下降。
+
+- **Fixed-size Chunking (固定大小)**：简单粗暴，按字符数或 Token 数切分（如每 500 字符切一段）。缺点是容易切断语义。
+- **Semantic Chunking (语义切分)**：基于文档结构（段落、标题）或语义相似度进行切分。Unstructured.io 的优势在于它能识别文档元素，天然支持基于 Title/Table/Paragraph 的语义切分，效果远优于固定大小切分。
 
 ---
 
@@ -36,6 +51,11 @@ Unstructured.io 是一个开源库（也有 SaaS 服务），专门致力于解�
   - 内置多种清洗函数，如去除多余的空白、去除乱码、标准化日期格式、去除页眉页脚等噪音数据。
 - **连接器生态 (Connectors)**：
   - 提供丰富的 Source Connectors (S3, Google Drive, SharePoint, Slack) 和 Destination Connectors (Chroma, Weaviate, MongoDB)，轻松构建 ETL 管道。
+
+### 部署方式：Local vs API
+
+- **Open Source Library (Local)**：完全免费，数据不出本地。但需要自行安装复杂的依赖（如 `tesseract-ocr`, `poppler`），且处理 PDF/Image 极其消耗 CPU/GPU 资源。
+- **Serverless API**：Unstructured 提供的托管服务。无需配置环境，通过 HTTP 请求即可处理文件，速度更快且支持自动扩缩容，适合生产环境快速集成。
 
 ### 适用场景
 
@@ -62,6 +82,12 @@ graph LR
 ```
 
 ### 代码示例 (Python)
+
+**前置准备**：
+除了安装 Python 库 `pip install unstructured[all-docs]` 外，处理 PDF 还需要安装系统级依赖：
+
+- **Poppler**：用于 PDF 渲染。
+- **Tesseract**：用于 OCR 文字识别。
 
 使用 `unstructured` 库处理 PDF 的简单示例：
 

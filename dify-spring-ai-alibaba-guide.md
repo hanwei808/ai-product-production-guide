@@ -2,6 +2,40 @@
 
 本文档旨在介绍两款在 AI 应用开发领域备受关注的工具：**Dify**（开源 LLM 应用开发平台）和 **Spring AI Alibaba**（Java 生态的 AI 开发框架），并探讨它们各自的优势及协同模式。
 
+```mermaid
+graph TD
+    subgraph User_Layer [用户交互层]
+        User((用户))
+    end
+
+    subgraph Orchestration_Layer [Dify: 编排与认知层]
+        DifyApp[Dify 应用/Agent]
+        RAG[RAG 引擎]
+    end
+
+    subgraph Capability_Layer [Spring AI Alibaba: 业务与工具层]
+        SpringService[Spring Boot 微服务]
+        BizLogic[复杂业务逻辑]
+        DataAccess[数据库/API]
+    end
+
+    subgraph Model_Layer [模型层]
+        LLM((通义千问/其他 LLM))
+    end
+
+    User --> DifyApp
+    DifyApp --> RAG
+    DifyApp -->|API / MCP| SpringService
+    SpringService --> BizLogic
+    BizLogic --> DataAccess
+    DifyApp -.-> LLM
+    SpringService -.-> LLM
+
+    style DifyApp fill:#e3f2fd,stroke:#1565c0
+    style SpringService fill:#e8f5e9,stroke:#2e7d32
+    style LLM fill:#fff3e0,stroke:#ef6c00
+```
+
 ## 1. Dify：开源 LLM 应用开发平台
 
 Dify 是一款开源的 LLM 应用开发平台，旨在帮助开发者（甚至是非技术人员）快速构建和运营生成式 AI 应用。它融合了 Backend-as-a-Service (BaaS) 和 LLMOps 的理念。
@@ -13,6 +47,7 @@ Dify 是一款开源的 LLM 应用开发平台，旨在帮助开发者（甚至�
 - **Agent 智能体构建**：支持 Function Calling 和 ReAct 模式，可以让 AI 自主调用工具（如搜索、API）来完成任务。
 - **模型中立**：支持接入 OpenAI、Anthropic、Llama 以及国内的通义千问、文心一言等主流大模型，切换模型成本极低。
 - **API 发布**：构建好的应用可以直接发布为 API，供前端或其他系统调用。
+- **MCP 协议支持 (Model Context Protocol)**：支持接入 MCP Server 扩展工具能力，或将 Dify 应用发布为 MCP Server 供其他客户端调用，实现生态互联。
 
 ### 适用场景
 
@@ -32,6 +67,8 @@ Spring AI Alibaba 是 Spring AI 项目在阿里云生态下的实现。它为 Ja
 - **无缝接入通义大模型**：深度集成了阿里云百炼平台（Model Studio），支持通义千问（Qwen）的对话、文生图、语音合成等能力。
 - **Spring 生态融合**：作为 Spring Boot Starter 提供，可以像使用 JDBC 或 Redis 一样轻松集成 AI 能力。支持依赖注入、自动配置等 Spring 特性。
 - **结构化输出 (Structured Output)**：能够将 LLM 的输出自动映射为 Java Bean (POJO)，方便在业务代码中处理。
+- **完整的 RAG 支持**：提供 Vector Store、Document Reader 等标准抽象，支持在代码层面实现高度定制的 RAG 检索增强生成流程。
+- **可观测性 (Observability)**：深度集成 Spring 生态的监控体系，可对 AI 调用链路进行追踪、性能监控和评估。
 
 ### 适用场景
 
@@ -61,6 +98,12 @@ Spring AI Alibaba 是 Spring AI 项目在阿里云生态下的实现。它为 Ja
 
 2.  **Spring AI Alibaba 作为“手脚”与工具层**：
     使用 Spring AI Alibaba 开发具体的业务功能接口（如查询数据库订单状态、执行复杂的计算逻辑）。将这些接口封装为 API，注册为 Dify 的**自定义工具 (Custom Tool)**。
+
+3.  **基于 MCP 协议的互联 (New)**：
+    利用 Model Context Protocol (MCP)，Spring AI Alibaba 应用可以作为 MCP Server 运行，直接被 Dify 发现和调用；反之，Dify 应用也可以作为 MCP Server 被 Spring AI Alibaba 的 Agent 调用。
+
+4.  **“原型到生产”的渐进式开发**：
+    产品经理在 Dify 上快速搭建 MVP 验证想法；验证成功后，开发团队参考 Dify 的流程设计，使用 Spring AI Alibaba 重构核心链路，以获得更高的性能和可维护性。
 
 **场景示例**：
 用户在 Dify 构建的客服助手中询问：“我的订单发货了吗？”
