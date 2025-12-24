@@ -1,5 +1,8 @@
 # Dify & Spring AI Alibaba：构建下一代 AI 应用的双重利器
 
+> 2025 年 12 月
+> 版本：Dify v1.11.x | Spring AI Alibaba v1.1.x
+
 本文档旨在介绍两款在 AI 应用开发领域备受关注的工具：**Dify**（开源 LLM 应用开发平台）和 **Spring AI Alibaba**（Java 生态的 AI 开发框架），并探讨它们各自的优势及协同模式。
 
 ```mermaid
@@ -11,12 +14,18 @@ graph TD
     subgraph Orchestration_Layer [Dify: 编排与认知层]
         DifyApp[Dify 应用/Agent]
         RAG[RAG 引擎]
+        Workflow[可视化工作流]
     end
 
-    subgraph Capability_Layer [Spring AI Alibaba: 业务与工具层]
-        SpringService[Spring Boot 微服务]
-        BizLogic[复杂业务逻辑]
+    subgraph Agent_Layer [Spring AI Alibaba: Agent 智能体层]
+        SpringAgent[Agent Framework]
+        MultiAgent[多智能体编排]
+        BizLogic[业务逻辑/工具]
         DataAccess[数据库/API]
+    end
+
+    subgraph Admin_Layer [管理与可观测层]
+        Admin[Admin 可视化平台]
     end
 
     subgraph Model_Layer [模型层]
@@ -25,15 +34,22 @@ graph TD
 
     User --> DifyApp
     DifyApp --> RAG
-    DifyApp -->|API / MCP| SpringService
-    SpringService --> BizLogic
+    DifyApp --> Workflow
+    DifyApp <-->|API / MCP| SpringAgent
+    SpringAgent --> MultiAgent
+    MultiAgent --> BizLogic
     BizLogic --> DataAccess
     DifyApp -.-> LLM
-    SpringService -.-> LLM
+    SpringAgent -.-> LLM
+    Admin -.->|集成/迁移| DifyApp
+    Admin -.->|管理/监控| SpringAgent
 
     style DifyApp fill:#e3f2fd,stroke:#1565c0
-    style SpringService fill:#e8f5e9,stroke:#2e7d32
+    style Workflow fill:#e3f2fd,stroke:#1565c0
+    style SpringAgent fill:#e8f5e9,stroke:#2e7d32
+    style MultiAgent fill:#e8f5e9,stroke:#2e7d32
     style LLM fill:#fff3e0,stroke:#ef6c00
+    style Admin fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 ## 1. Dify：开源 LLM 应用开发平台
@@ -57,24 +73,34 @@ Dify 是一款开源的 LLM 应用开发平台，旨在帮助开发者（甚至�
 
 ---
 
-## 2. Spring AI Alibaba：Java 生态的 AI 开发框架
+## 2. Spring AI Alibaba：构建 Agent 智能体应用的 Java 框架
 
-Spring AI Alibaba 是 Spring AI 项目在阿里云生态下的实现。它为 Java/Spring 开发者提供了一套标准的 API，用于接入阿里云通义大模型（Tongyi Qianwen）及其他 AI 服务。
+Spring AI Alibaba 1.1 是基于 Spring AI 构建的生产就绪框架，专注于构建 **Agentic、Workflow 和 Multi-agent 应用**。它是阿里云通义系列模型及服务在 Java AI 应用开发领域的最佳实践。
 
-### 核心优势
+> 官网: [java2ai.com](https://java2ai.com/) | 当前版本: **1.1.0.0-RC2**
 
-- **统一的 API 抽象**：遵循 Spring AI 的设计原则，提供统一的 `ChatClient`、`EmbeddingClient` 等接口。开发者只需编写一次代码，即可通过配置切换不同的底层模型实现（Portable API）。
-- **无缝接入通义大模型**：深度集成了阿里云百炼平台（Model Studio），支持通义千问（Qwen）的对话、文生图、语音合成等能力。
-- **Spring 生态融合**：作为 Spring Boot Starter 提供，可以像使用 JDBC 或 Redis 一样轻松集成 AI 能力。支持依赖注入、自动配置等 Spring 特性。
-- **结构化输出 (Structured Output)**：能够将 LLM 的输出自动映射为 Java Bean (POJO)，方便在业务代码中处理。
-- **完整的 RAG 支持**：提供 Vector Store、Document Reader 等标准抽象，支持在代码层面实现高度定制的 RAG 检索增强生成流程。
-- **可观测性 (Observability)**：深度集成 Spring 生态的监控体系，可对 AI 调用链路进行追踪、性能监控和评估。
+### 核心架构
+
+- **Agent Framework**：以 `ReactAgent` 为核心的智能体开发框架，内置上下文工程（Context Engineering）和人机协同（Human In The Loop）支持。
+- **Graph**：底层工作流运行时，支持条件路由、嵌套图、并行执行和状态管理，可导出为 PlantUML 和 Mermaid 格式。
+- **Augmented LLM**：基于 Spring AI 的底层抽象，包括 Model、Tool、MCP、Message、Vector Store 等。
+
+### 核心特性
+
+- **多智能体编排 (Multi-Agent Orchestration)**：内置 `SequentialAgent`、`ParallelAgent`、`RoutingAgent`、`LoopAgent`、`SupervisorAgent` 等模式，轻松组合多个智能体完成复杂任务。
+- **上下文工程 (Context Engineering)**：内置最佳实践，包括人机协同、上下文压缩、上下文编辑、模型与工具调用限制、工具重试、规划、动态工具选择等。
+- **A2A 支持 (Agent-to-Agent)**：通过 Nacos 集成实现分布式智能体间通信与协作。
+- **丰富的模型与 MCP 支持**：支持多种 LLM 提供商（DashScope、OpenAI 等）、工具调用和 Model Context Protocol (MCP)。
+- **Admin 可视化平台**：一站式 Agent 平台，支持可视化 Agent 开发、可观测性、评估和 MCP 管理，可与 Dify 等低代码平台集成。
+- **结构化输出 (Structured Output)**：将 LLM 输出自动映射为 Java Bean (POJO)。
+- **流式传输与错误处理**：实时流式响应，强大的错误恢复和重试机制。
 
 ### 适用场景
 
-- 现有的 Spring Boot 微服务应用集成 AI 功能。
-- 需要深度定制业务逻辑、且对性能和并发有要求的后端系统。
-- Java 开发团队希望利用现有技术栈转型 AI 开发。
+- 构建具备自主决策能力的 AI Agent 应用。
+- 需要多智能体协作的复杂业务场景。
+- 现有 Spring Boot 微服务集成 AI 能力。
+- 需要深度定制业务逻辑、对性能和并发有要求的后端系统。
 
 ---
 
@@ -82,10 +108,11 @@ Spring AI Alibaba 是 Spring AI 项目在阿里云生态下的实现。它为 Ja
 
 ### 选型建议
 
-| 维度         | Dify                                | Spring AI Alibaba                    |
+| 维度         | Dify (v1.11.x)                      | Spring AI Alibaba (v1.1.x)           |
 | :----------- | :---------------------------------- | :----------------------------------- |
-| **开发模式** | 低代码/无代码，可视化编排           | 纯代码开发 (Java)                    |
-| **目标用户** | 全栈开发者、产品经理、Prompt 工程师 | Java 后端工程师                      |
+| **开发模式** | 低代码/无代码，可视化编排           | 纯代码开发 (Java)，支持 Admin 可视化 |
+| **目标用户** | 全栈开发者、产品经理、Prompt 工程师 | Java 后端工程师、架构师              |
+| **核心能力** | RAG 引擎、工作流编排、快速原型      | 多智能体编排、上下文工程、A2A 通信   |
 | **灵活性**   | 流程编排灵活，但底层逻辑受限于平台  | 逻辑控制极其灵活，可深度集成现有业务 |
 | **部署运维** | 需要部署 Dify 平台 (Docker/K8s)     | 随 Spring Boot 应用打包部署          |
 
@@ -99,10 +126,13 @@ Spring AI Alibaba 是 Spring AI 项目在阿里云生态下的实现。它为 Ja
 2.  **Spring AI Alibaba 作为“手脚”与工具层**：
     使用 Spring AI Alibaba 开发具体的业务功能接口（如查询数据库订单状态、执行复杂的计算逻辑）。将这些接口封装为 API，注册为 Dify 的**自定义工具 (Custom Tool)**。
 
-3.  **基于 MCP 协议的互联 (New)**：
+3.  **基于 MCP 协议的互联**：
     利用 Model Context Protocol (MCP)，Spring AI Alibaba 应用可以作为 MCP Server 运行，直接被 Dify 发现和调用；反之，Dify 应用也可以作为 MCP Server 被 Spring AI Alibaba 的 Agent 调用。
 
-4.  **“原型到生产”的渐进式开发**：
+4.  **Admin 平台与 Dify 的集成**：
+    Spring AI Alibaba Admin 支持与 Dify 等开源低代码平台集成，可将 Dify DSL 快速迁移为 Spring AI Alibaba 项目，实现从原型到生产的平滑过渡。
+
+5.  **"原型到生产"的渐进式开发**：
     产品经理在 Dify 上快速搭建 MVP 验证想法；验证成功后，开发团队参考 Dify 的流程设计，使用 Spring AI Alibaba 重构核心链路，以获得更高的性能和可维护性。
 
 **场景示例**：
@@ -117,7 +147,7 @@ Spring AI Alibaba 是 Spring AI 项目在阿里云生态下的实现。它为 Ja
 
 ## 总结
 
-- **Dify** 让 AI 应用的构建变得简单、可视、可运营。
-- **Spring AI Alibaba** 让 Java 开发者能以最熟悉的方式拥抱 AI 浪潮。
+- **Dify** 让 AI 应用的构建变得简单、可视、可运营，适合快速原型验证和 RAG 场景。
+- **Spring AI Alibaba** 让 Java 开发者能以最熟悉的方式构建生产级 Agent 智能体应用，支持多智能体编排和复杂工作流。
 
-结合两者的力量，企业可以构建出既具备强大认知能力（Dify），又拥有深厚业务处理能力（Spring AI Alibaba）的现代化 AI 应用。
+结合两者的力量，企业可以构建出既具备强大认知能力（Dify），又拥有深厚业务处理能力和智能体协作能力（Spring AI Alibaba）的现代化 AI 应用。

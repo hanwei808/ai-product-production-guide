@@ -1,11 +1,15 @@
 # Unstructured.io & ETL：构建 AI 时代的数据流水线
 
+> 2025 年 12 月
+> 版本：Unstructured.io v0.18.x
+
 本文档旨在介绍 AI 数据处理领域的关键概念 **ETL**，以及在非结构化数据处理方面表现卓越的工具 **Unstructured.io**，帮助开发者理解如何为 LLM 应用（如 RAG）准备高质量的数据。
 
 ```mermaid
 graph LR
-    Docs["非结构化文档<br/>(PDF/Word/PPT)"] -->|Extract| ETL["Unstructured.io<br/>(解析与清洗)"]
-    ETL -->|Transform| Chunks["语义切片<br/>(Chunking)"]
+    Docs["非结构化文档<br/>(PDF/Word/图片等 64+ 格式)"] -->|Extract| ETL["Unstructured.io<br/>(解析与分区)"]
+    ETL -->|VLM 增强| VLM["图像描述/表格转换<br/>/OCR 优化"]
+    VLM -->|Transform| Chunks["语义切片<br/>(Chunking)"]
     Chunks -->|Load| VDB[("向量数据库")]
     VDB <-->|Retrieval| App["LLM 应用<br/>(RAG)"]
 ```
@@ -42,20 +46,27 @@ Unstructured.io 是一个开源库（也有 SaaS 服务），专门致力于解�
 ### 核心特性
 
 - **全格式支持 (Ingest Any Data)**：
-  - 支持解析 PDF, HTML, Word (.docx), PowerPoint (.pptx), Excel (.xlsx), Email (.eml), Markdown, Images 等 20+ 种主流格式。
+  - 支持解析 PDF, HTML, Word (.docx), PowerPoint (.pptx), Excel (.xlsx), Email (.eml/.msg), Markdown, Images, EPUB, RTF, XML 等 **64+ 种文件格式**。
   - 即使是扫描版的 PDF 或图片，也能通过集成的 OCR (Tesseract/PaddleOCR) 提取文本。
 - **智能分区 (Partitioning)**：
   - 不仅仅是提取纯文本，还能识别文档结构。它能将文档切分为 Title (标题), NarrativeText (正文), Table (表格), ListItem (列表项) 等语义块。
   - 这对于 RAG 至关重要，因为保留文档结构能显著提升检索的准确性。
+- **VLM 增强功能 (Enrichments)**：
+  - **Image Description**：使用视觉语言模型 (VLM) 为检测到的图像生成文本摘要。
+  - **Generative OCR**：使用 VLM 提升文本块的 OCR 识别准确度。
+  - **Table to HTML**：使用 VLM 将检测到的表格转换为 HTML 结构化表示。
 - **清洗与优化 (Cleaning)**：
   - 内置多种清洗函数，如去除多余的空白、去除乱码、标准化日期格式、去除页眉页脚等噪音数据。
 - **连接器生态 (Connectors)**：
-  - 提供丰富的 Source Connectors (S3, Google Drive, SharePoint, Slack) 和 Destination Connectors (Chroma, Weaviate, MongoDB)，轻松构建 ETL 管道。
+  - 提供 **30+ 连接器和 1,250+ 管道**，包括 Source Connectors (S3, Google Drive, SharePoint, Dropbox, Slack) 和 Destination Connectors (Pinecone, Weaviate, MongoDB, Databricks, Snowflake, Elastic)，轻松构建 ETL 管道。
 
-### 部署方式：Local vs API
+### 部署方式：Local vs Platform
 
-- **Open Source Library (Local)**：完全免费，数据不出本地。但需要自行安装复杂的依赖（如 `tesseract-ocr`, `poppler`），且处理 PDF/Image 极其消耗 CPU/GPU 资源。
-- **Serverless API**：Unstructured 提供的托管服务。无需配置环境，通过 HTTP 请求即可处理文件，速度更快且支持自动扩缩容，适合生产环境快速集成。
+- **Open Source Library (Local)**：完全免费，数据不出本地。但需要自行安装复杂的依赖（如 `tesseract-ocr`, `poppler-utils`, `libreoffice`），且处理 PDF/Image 极其消耗 CPU/GPU 资源。**注意：当前版本已不再支持 Python 3.9，建议使用 Python 3.10+**。
+- **Unstructured Platform**：官方提供的托管服务，包含 **UI 界面**和 **API** 两种使用方式。
+  - **UI 界面**：无需编码，通过拖放文件即可快速处理，支持实时预览分区结果和 VLM 增强。
+  - **API**：通过 HTTP 请求处理文件，速度更快且支持自动扩缩容，适合生产环境快速集成。
+  - **定价方案**：提供 Let's Go（免费试用）、Pay-As-You-Go（按需付费）、Business（企业级）等多种方案。
 
 ### 适用场景
 
@@ -73,28 +84,43 @@ Unstructured.io 是一个开源库（也有 SaaS 服务），专门致力于解�
 
 ```mermaid
 graph LR
-    A[原始 PDF 文件] -->|Extract| B(Unstructured.io)
+    A[原始 PDF 文件] -->|Extract| B("Unstructured.io<br/>(hi_res + OCR)")
     B -->|Partition| C{识别元素}
-    C -->|Table| D[HTML/CSV 格式表格]
-    C -->|Text| E[文本块]
-    D & E -->|Transform| F[Chunking & Embedding]
+    C -->|Title| D1[标题]
+    C -->|NarrativeText| D2[正文段落]
+    C -->|Table| D3["表格<br/>(HTML 结构)"]
+    C -->|ListItem| D4[列表项]
+    D1 & D2 & D3 & D4 -->|VLM 增强| E[图像描述/表格转换]
+    E -->|Transform| F[Chunking & Embedding]
     F -->|Load| G[向量数据库]
 ```
 
 ### 代码示例 (Python)
 
 **前置准备**：
-除了安装 Python 库 `pip install unstructured[all-docs]` 外，处理 PDF 还需要安装系统级依赖：
+除了安装 Python 库 `pip install "unstructured[all-docs]"` 外，处理 PDF 还需要安装系统级依赖：
 
-- **Poppler**：用于 PDF 渲染。
-- **Tesseract**：用于 OCR 文字识别。
+- **Poppler (poppler-utils)**：用于 PDF 渲染。
+- **Tesseract (tesseract-ocr)**：用于 OCR 文字识别（可安装 `tesseract-lang` 获取更多语言支持）。
+- **LibreOffice**：用于处理 MS Office 文档。
+- **Pandoc (2.14.2+)**：用于处理 EPUB、RTF 和 Open Office 文档。
+
+> 💡 **提示**：也可以使用 Docker 镜像快速开始：
+>
+> ```bash
+> docker pull downloads.unstructured.io/unstructured-io/unstructured:latest
+> ```
 
 使用 `unstructured` 库处理 PDF 的简单示例：
 
 ```python
+from unstructured.partition.auto import partition
 from unstructured.partition.pdf import partition_pdf
 
-# 1. Extract & Transform (Partitioning)
+# 方式一：使用通用 partition 函数（自动检测文件类型）
+elements = partition(filename="annual_report.pdf")
+
+# 方式二：使用 PDF 专用函数（更精细控制）
 # 使用 "hi_res" 策略，利用 OCR 和视觉模型识别文档布局
 elements = partition_pdf(
     filename="annual_report.pdf",
@@ -121,5 +147,15 @@ for element in elements:
 
 - **ETL** 是方法论，定义了数据流动的标准过程。在 AI 时代，它从“表到表”变成了“文档到向量”。
 - **Unstructured.io** 是实现这一方法论的最佳工具之一，它填平了“人类可读文档”与“机器可读数据”之间的鸿沟。
+- **最新版本 (0.18.x)** 已支持 64+ 种文件格式、VLM 增强功能、30+ 连接器，并提供 UI 和 API 两种使用方式。
 
 掌握 Unstructured.io，就掌握了高质量 RAG 应用的数据入口。
+
+---
+
+## 参考资源
+
+- [Unstructured 官方文档](https://docs.unstructured.io/)
+- [Unstructured GitHub 仓库](https://github.com/Unstructured-IO/unstructured)
+- [Unstructured Platform](https://platform.unstructured.io/)
+- [Unstructured 官方博客](https://unstructured.io/blog)

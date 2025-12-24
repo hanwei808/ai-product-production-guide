@@ -1,5 +1,8 @@
 # Docker & Kubernetes：云原生时代的基石
 
+> 2025 年 12 月
+> 版本：Docker 24.x | Kubernetes 1.30.x
+
 本文档旨在介绍现代云计算和微服务架构中不可或缺的两大核心技术：**Docker**（容器化标准）和 **Kubernetes**（容器编排霸主），帮助开发者理解它们如何改变了软件交付与运行的方式。
 
 ```mermaid
@@ -7,16 +10,20 @@ graph LR
     subgraph Dev [开发构建]
         Code[源代码] --> Dockerfile
         Dockerfile -->|docker build| Image[Docker 镜像]
+        Compose[docker-compose.yml] -->|本地编排| Image
     end
 
     subgraph Dist [分发]
         Image -->|docker push| Registry[镜像仓库]
+        Chart[Helm Chart] -->|helm push| ChartRepo[Chart 仓库]
     end
 
     subgraph Run [K8s 生产环境]
-        Registry -->|K8s Pull| Node[K8s 节点]
+        Registry -->|containerd pull| Node[K8s 节点]
+        ChartRepo -->|helm install| Deployment
+
         Node --> Pod[Pod]
-        Pod -->|包含| Container[容器]
+        Pod -->|运行于| Containerd[containerd]
 
         Deployment -->|管理| Pod
         Service -->|负载均衡| Pod
@@ -47,12 +54,24 @@ Docker 是一种开源的容器化平台，它将应用程序及其所有依赖�
 - **轻量高效**：直接利用宿主机内核，无需模拟硬件和运行完整操作系统，启动快，密度高。
 - **敏捷交付**：配合 CI/CD 流水线，可以实现分钟级的应用构建与部署。
 
+### Docker Desktop：开发者的一站式工具
+
+**Docker Desktop** 是一个易于安装的桌面应用程序（支持 Mac、Windows、Linux），它集成了：
+
+- Docker 守护进程 (`dockerd`) 和 Docker 客户端 (`docker`)
+- Docker Compose
+- 内置的 Kubernetes 集群（可选启用）
+- Docker Content Trust 和凭证助手
+
+这使得开发者可以在本地轻松构建、测试容器化应用，甚至无需额外配置即可使用 Kubernetes。
+
 ### Docker Compose：多容器编排利器
 
 在开发环境中，一个应用往往由多个服务组成（如 Web 应用 + 数据库 + 缓存）。**Docker Compose** 是一个用于定义和运行多容器 Docker 应用程序的工具。
 
 - 通过一个 YAML 文件来配置应用的所有服务。
 - 使用一个命令，就可以从配置中创建并启动所有服务。
+- 支持生产、预发布、开发、测试环境以及 CI 工作流。
 
 ---
 
@@ -90,13 +109,18 @@ Kubernetes（常简称为 K8s）是 Google 开源的容器编排平台，用于�
 - **自我修复 (Self-healing)**：当容器失败、节点故障时，自动重启或重新调度容器，保证服务高可用。
 - **服务发现与负载均衡**：自动为容器分配 IP 和 DNS 名，并在它们之间分配流量。
 - **滚动更新与回滚**：在不中断服务的情况下更新应用版本，如果出问题还能一键回滚。
+- **IPv4/IPv6 双栈**：支持同时为 Pod 和 Service 分配 IPv4 和 IPv6 地址。
+- **批处理执行**：除了长期运行的服务外，还可以管理批处理和 CI 工作负载。
+- **可扩展性设计**：无需修改上游源代码即可为集群添加新功能。
 
 ### Kubernetes 的包管理器：Helm
 
-**Helm** 是 Kubernetes 的包管理工具，类似于 Linux 的 `apt` 或 `yum`。
+**Helm** 是 Kubernetes 的包管理工具，类似于 Linux 的 `apt` 或 `yum`。Helm 是 CNCF 毕业项目，目前最新版本为 **v4.0.0**（2025 年发布）。
 
 - **Chart**：Helm 的打包格式，包含了一组相关的 K8s 资源定义。
+- **Repository**：Chart 仓库，可以在 [Artifact Hub](https://artifacthub.io/) 上搜索 800+ 公开 Charts。
 - **优势**：简化了复杂应用的部署和管理，支持版本控制和一键升级/回滚。
+- **Helm 4 新特性**：引入了新的架构模式和增强功能，同时保持对 Charts 的向后兼容性。
 
 ---
 
@@ -114,7 +138,7 @@ Kubernetes（常简称为 K8s）是 Google 开源的容器编排平台，用于�
 | **类比**     | 乐高积木块                      | 乐高搭建说明书与搭建者          |
 | **使用场景** | 开发环境、简单的单机部署        | 生产环境、大规模微服务集群      |
 
-> **注**：虽然 Docker 也有自己的编排工具 Docker Swarm，但在工业界，Kubernetes 已经成为了事实上的标准。现在 Kubernetes 甚至不再直接依赖 Docker Engine，而是通过 containerd 等更底层的运行时来运行容器，但开发者依然使用 Docker 工具链来构建镜像。
+> **注**：虽然 Docker 也有自己的编排工具 Docker Swarm，但在工业界，Kubernetes 已经成为了事实上的标准。从 **Kubernetes 1.24 版本**（2022 年）开始，K8s 正式移除了对 Docker Engine（dockershim）的直接支持，转而使用 **containerd** 或 **CRI-O** 等符合 CRI（Container Runtime Interface）标准的运行时。但这对开发者几乎没有影响——开发者依然使用 Docker 工具链来构建镜像，这些镜像完全兼容任何符合 OCI 标准的容器运行时。
 
 ---
 

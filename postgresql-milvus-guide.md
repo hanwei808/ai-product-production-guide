@@ -1,5 +1,8 @@
 # PostgreSQL & Milvus：结构化与非结构化数据的存储双雄
 
+> 2025 年 12 月
+> 版本：PostgreSQL v15.x | pgvector v0.8.1
+
 本文档旨在介绍两款在现代数据架构中至关重要的数据库：**PostgreSQL**（全能型关系数据库）和 **Milvus**（高性能向量数据库），并探讨它们在 AI 时代的角色及协同应用。
 
 ```mermaid
@@ -16,7 +19,9 @@ PostgreSQL 是一款功能强大、开源的对象-关系型数据库系统（OR
 ### 核心特性
 
 - **极致的可靠性与 ACID**：支持复杂的事务处理，确保数据的一致性和完整性，是核心业务数据的首选存储。
-- **强大的扩展性 (Extensions)**：拥有丰富的插件生态。最著名的是 **pgvector**，它让 PostgreSQL 原生支持向量存储和相似度搜索。支持 **IVFFlat** 和 **HNSW** 索引，大大提升了查询性能。
+- **强大的扩展性 (Extensions)**：拥有丰富的插件生态。最著名的是 **pgvector**（当前版本 v0.8.1），它让 PostgreSQL 原生支持向量存储和相似度搜索。支持 **IVFFlat** 和 **HNSW** 索引，大大提升了查询性能。
+- **多种向量类型**：支持 `vector`（最高 16,000 维）、`halfvec`（半精度，最高 16,000 维）、`sparsevec`（稀疏向量）、`bit`（二进制向量）等多种类型。
+- **丰富的距离函数**：支持 L2 距离 (`<->`)、内积 (`<#>`)、余弦距离 (`<=>`)、L1 距离 (`<+>`)、汉明距离 (`<~>`)、杰卡德距离 (`<%>`) 等。
 - **JSON 支持**：优秀的 JSONB 数据类型支持，使其能像 NoSQL 数据库一样处理半结构化数据。
 - **标准 SQL**：完全兼容 SQL 标准，拥有强大的查询优化器和复杂的联结（Join）能力。
 
@@ -30,14 +35,18 @@ PostgreSQL 是一款功能强大、开源的对象-关系型数据库系统（OR
 
 ## 2. Milvus：为 AI 而生的云原生向量数据库
 
-Milvus 是一款开源的云原生向量数据库，专为处理非结构化数据（文本、图像、音频、视频等转化后的向量）而设计。它在大规模向量检索领域表现卓越。
+Milvus 是一款开源的云原生向量数据库，专为处理非结构化数据（文本、图像、音频、视频等转化后的向量）而设计。它在大规模向量检索领域表现卓越。当前稳定版本为 **v2.5.x**，PyMilvus SDK 最新版本为 **v2.5.16**。
 
 ### 核心特性
 
 - **高性能向量检索**：专为向量运算优化，支持多种索引类型（IVF, HNSW, DiskANN 等），能在亿级数据规模下实现毫秒级响应。
-- **灵活的部署模式**：不仅支持云原生分布式部署（存储计算分离），还提供 **Milvus Lite**，可像 SQLite 一样嵌入 Python 应用，适合开发测试及轻量级场景。
+- **灵活的部署模式**：
+  - **Milvus Lite**：可像 SQLite 一样嵌入 Python 应用，适合开发测试及轻量级场景（支持最多几百万向量）。
+  - **Milvus Standalone**：单机部署，适合中等规模生产环境（可扩展至 1 亿向量）。
+  - **Milvus Distributed**：云原生分布式部署（存储计算分离），适合大规模生产环境（支持数百亿向量）。
 - **多模态支持**：不仅支持文本向量，还能高效处理图像、视频、音频等多模态数据的向量检索。
 - **混合搜索 (Hybrid Search)**：支持在向量检索的同时进行标量过滤，虽然比传统 DB 弱，但在不断增强。
+- **丰富的 SDK 支持**：Python、Java、Go、Node.js、C#、RESTful 等多语言客户端。
 
 ### 适用场景
 
@@ -52,10 +61,11 @@ Milvus 是一款开源的云原生向量数据库，专为处理非结构化数�
 
 ### 选型建议：pgvector 还是 Milvus？
 
-| 维度             | PostgreSQL (pgvector)              | Milvus                               |
+| 维度             | PostgreSQL (pgvector v0.8.1)       | Milvus (v2.5.x)                      |
 | :--------------- | :--------------------------------- | :----------------------------------- |
 | **数据规模**     | 中小规模 (百万级向量以内表现良好)  | 大规模 (千万级至百亿级向量)          |
 | **架构复杂度**   | **低** (复用现有 DB，无需新增组件) | **中/高** (需要独立部署和维护)       |
+| **向量维度**     | 最高 16,000 维 (halfvec)           | 无硬性限制                           |
 | **检索性能**     | 够用 (随着数据量增加性能下降较快)  | **极致** (专为高并发、低延迟设计)    |
 | **数据一致性**   | 强一致性 (ACID)                    | 最终一致性 (通常情况)                |
 | **混合查询能力** | **极强** (SQL 极其成熟)            | 较好 (支持标量过滤，但不如 SQL 灵活) |
@@ -129,14 +139,18 @@ INSERT INTO items (content, embedding) VALUES
 ('Banana', '[1,1,2]'),
 ('Cat', '[2,2,2]');
 
--- 4. 创建 HNSW 索引 (推荐)
+-- 4. 创建 HNSW 索引 (推荐，支持 L2/内积/余弦/L1 等距离)
 CREATE INDEX ON items USING hnsw (embedding vector_l2_ops);
 
 -- 5. 相似度查询 (查找与 [1,1,1] 最相似的 2 条数据)
-SELECT content, embedding <=> '[1,1,1]' as distance
+-- 使用 L2 距离
+SELECT content, embedding <-> '[1,1,1]' as distance
 FROM items
 ORDER BY distance
 LIMIT 2;
+
+-- 6. 启用迭代索引扫描 (v0.8.0+ 新特性，改善过滤查询)
+SET hnsw.iterative_scan = strict_order;
 ```
 
 ### Milvus (Python SDK) 简单示例
@@ -144,8 +158,12 @@ LIMIT 2;
 ```python
 from pymilvus import MilvusClient
 
-# 1. 连接 Milvus (使用 Milvus Lite 本地文件)
+# 1. 连接 Milvus
+# 方式一：使用 Milvus Lite 本地文件（开发测试推荐）
 client = MilvusClient("milvus_demo.db")
+
+# 方式二：连接 Milvus Standalone/Distributed 服务器
+# client = MilvusClient(uri="http://localhost:19530")
 
 # 2. 创建集合
 if client.has_collection(collection_name="demo_collection"):
@@ -174,11 +192,21 @@ res = client.search(
 print(res)
 ```
 
+> **安装 PyMilvus**：`pip install --upgrade pymilvus==2.5.16`
+
 ---
 
 ## 总结
 
-- **PostgreSQL** 是**全能选手**，对于大多数起步阶段或中等规模的 AI 应用，配合 `pgvector` 是性价比最高的选择，架构最简单。
-- **Milvus** 是**专业选手**，当你的向量数据量巨大，或者对检索性能有极致要求时，它是不可或缺的基础设施。
+- **PostgreSQL** 是**全能选手**，对于大多数起步阶段或中等规模的 AI 应用，配合 `pgvector`（v0.8.1）是性价比最高的选择，架构最简单。新版本支持最高 16,000 维向量、多种距离函数、迭代索引扫描等高级特性。
+- **Milvus** 是**专业选手**，当你的向量数据量巨大，或者对检索性能有极致要求时，它是不可或缺的基础设施。v2.5.x 版本提供 Lite/Standalone/Distributed 三种部署模式，灵活适配不同规模。
 
 根据业务发展阶段灵活选择，甚至可以从 PG 开始，随着数据量增长平滑迁移至 Milvus。
+
+---
+
+> **版本信息**（更新于 2025 年 12 月）：
+>
+> - pgvector: v0.8.1
+> - PyMilvus: v2.5.16
+> - Milvus: v2.5.x
