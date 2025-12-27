@@ -172,7 +172,8 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-[data-theme='dark'] body {
+html[data-theme='dark'],
+html[data-theme='dark'] body {
   background: linear-gradient(
     135deg,
     #0f0c29 0%,
@@ -181,6 +182,7 @@ body::-webkit-scrollbar {
     #1a1a2e 75%,
     #16213e 100%
   );
+  background-attachment: fixed;
 }
 
 /* Markdown 内容样式 */
