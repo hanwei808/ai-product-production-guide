@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { Anchor, Typography } from 'antd'
+import { Typography } from 'antd'
 import { useTheme } from '@/lib/ThemeContext'
 
 const { Title } = Typography
@@ -77,16 +77,16 @@ function buildTocTree(headings: TocItem[]): TocItem[] {
   return result
 }
 
-// 转换为 Anchor 组件需要的格式
-function toAnchorItems(items: TocItem[]): any[] {
-  return items.map((item) => ({
-    key: item.key,
-    href: item.href,
-    title: item.title,
-    children: item.children && item.children.length > 0 
-      ? toAnchorItems(item.children) 
-      : undefined,
-  }))
+// 获取所有标题的扁平列表（用于滚动检测）
+function flattenTocItems(items: TocItem[]): TocItem[] {
+  const result: TocItem[] = []
+  items.forEach(item => {
+    result.push(item)
+    if (item.children) {
+      result.push(...flattenTocItems(item.children))
+    }
+  })
+  return result
 }
 
 export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
@@ -94,32 +94,27 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
   const pathname = usePathname()
   const [tocItems, setTocItems] = useState<TocItem[]>([])
   const [visible, setVisible] = useState(false)
-  const [container, setContainer] = useState<HTMLElement | Window | null>(null)
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [activeKey, setActiveKey] = useState<string>('')
+  const rafRef = useRef<number>(0)
+  const flatItemsRef = useRef<TocItem[]>([])
 
-  // 更新目录（不清空现有内容，适用于流式加载）
+  // 更新目录
   const updateTocIncremental = useCallback(() => {
     const headings = extractHeadings()
     if (headings.length > 0) {
       const tree = buildTocTree(headings)
       setTocItems(tree)
+      flatItemsRef.current = flattenTocItems(tree)
       setVisible(true)
     }
   }, [])
 
-  // 完全重置目录（页面切换时使用）
+  // 完全重置目录
   const resetToc = useCallback(() => {
     setTocItems([])
     setVisible(false)
-    setIsInitialLoad(true)
-  }, [])
-
-  useEffect(() => {
-    // 获取滚动容器
-    const contentContainer = document.querySelector('.app-content') as HTMLElement
-    if (contentContainer) {
-      setContainer(contentContainer)
-    }
+    setActiveKey('')
+    flatItemsRef.current = []
   }, [])
 
   // 路由变化时重置目录
@@ -127,21 +122,19 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
     resetToc()
   }, [pathname, resetToc])
 
-  // 监听 DOM 变化，流式加载时渐进式更新目录
+  // 监听 DOM 变化
   useEffect(() => {
     let throttleTimer: NodeJS.Timeout | null = null
     let isThrottled = false
     let pendingUpdate = false
     
     const handleMutation = () => {
-      // 使用节流处理，保证流式加载时定期更新
       if (isThrottled) {
         pendingUpdate = true
         return
       }
       
       updateTocIncremental()
-      setIsInitialLoad(false)
       isThrottled = true
       
       throttleTimer = setTimeout(() => {
@@ -150,26 +143,22 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
           pendingUpdate = false
           updateTocIncremental()
         }
-      }, 100) // 每 100ms 最多更新一次
+      }, 100)
     }
 
     const observer = new MutationObserver(handleMutation)
 
-    // 立即开始观察，不等待
     const initTimer = setTimeout(() => {
       const article = document.querySelector('article')
       if (article) {
-        // 先执行一次更新
         updateTocIncremental()
-        setIsInitialLoad(false)
-        
         observer.observe(article, {
           childList: true,
           subtree: true,
           characterData: true,
         })
       }
-    }, 50) // 缩短初始延迟
+    }, 50)
 
     return () => {
       clearTimeout(initTimer)
@@ -180,15 +169,149 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
     }
   }, [pathname, updateTocIncremental])
 
+  // 使用 RAF 优化滚动监听
+  useEffect(() => {
+    if (!visible || flatItemsRef.current.length === 0) return
+
+    const headerHeight = 88
+
+    const updateActiveKey = () => {
+      const items = flatItemsRef.current
+      let currentActive = ''
+      
+      // 检查是否滚动到页面底部
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      const isAtBottom = scrollTop + windowHeight >= documentHeight - 50 // 50px 容差
+      
+      // 如果滚动到底部，激活最后一个节点
+      if (isAtBottom && items.length > 0) {
+        currentActive = items[items.length - 1].key
+      } else {
+        // 正常逻辑：从后往前找第一个进入视口的标题
+        for (let i = items.length - 1; i >= 0; i--) {
+          const item = items[i]
+          const element = document.getElementById(item.key)
+          if (element) {
+            const rect = element.getBoundingClientRect()
+            if (rect.top <= headerHeight + 20) {
+              currentActive = item.key
+              break
+            }
+          }
+        }
+      }
+      
+      // 如果没有找到，选择第一个
+      if (!currentActive && items.length > 0) {
+        currentActive = items[0].key
+      }
+      
+      setActiveKey(prev => prev !== currentActive ? currentActive : prev)
+    }
+
+    const handleScroll = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+      rafRef.current = requestAnimationFrame(updateActiveKey)
+    }
+
+    // 初始化激活状态
+    updateActiveKey()
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [visible, tocItems])
+
+  // 处理点击
+  const handleClick = useCallback((e: React.MouseEvent, key: string) => {
+    e.preventDefault()
+    const targetElement = document.getElementById(key)
+    
+    if (targetElement) {
+      const headerHeight = 64
+      const offset = 24
+      const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY - headerHeight - offset
+      
+      window.scrollTo({
+        top: targetPosition,
+        behavior: 'smooth'
+      })
+      
+      history.pushState(null, '', `#${key}`)
+      setActiveKey(key)
+    }
+  }, [])
+
   if (!visible || tocItems.length === 0) {
     return null
   }
 
-  const anchorItems = toAnchorItems(tocItems)
-
-  // 获取内容滚动容器
-  const getContainer = () => {
-    return container || document.querySelector('.app-content') as HTMLElement || globalThis
+  // 渲染目录项
+  const renderItems = (items: TocItem[], level = 0) => {
+    return items.map((item) => {
+      const isActive = activeKey === item.key
+      return (
+        <div key={item.key} style={{ paddingLeft: level * 12 }}>
+          <a
+            href={item.href}
+            onClick={(e) => handleClick(e, item.key)}
+            className={`toc-link ${isActive ? 'toc-link-active' : ''}`}
+            style={{
+              display: 'block',
+              padding: '4px 8px',
+              marginBottom: 2,
+              fontSize: 13,
+              lineHeight: 1.5,
+              textDecoration: 'none',
+              borderRadius: 4,
+              fontWeight: isActive ? 600 : 400,
+              transition: 'all 0.2s ease',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              // 选中状态渐变效果
+              background: isActive 
+                ? (theme === 'light' 
+                    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)' 
+                    : 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(167, 139, 250, 0.2) 100%)')
+                : 'transparent',
+              // 选中状态文字渐变
+              ...(isActive ? {
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundImage: theme === 'light'
+                  ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'
+                  : 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)',
+              } : {
+                color: theme === 'light' ? '#64748b' : '#94a3b8',
+              }),
+            }}
+          >
+            <span style={isActive ? {
+              background: theme === 'light'
+                ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'
+                : 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            } : undefined}>
+              {item.title}
+            </span>
+          </a>
+          {item.children && item.children.length > 0 && renderItems(item.children, level + 1)}
+        </div>
+      )
+    })
   }
 
   return (
@@ -223,15 +346,9 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
       >
         目录
       </Title>
-      <Anchor
-        affix={false}
-        getContainer={getContainer}
-        targetOffset={100}
-        items={anchorItems}
-        style={{
-          background: 'transparent',
-        }}
-      />
+      <nav style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+        {renderItems(tocItems)}
+      </nav>
     </div>
   )
 }
