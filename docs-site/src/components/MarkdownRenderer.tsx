@@ -788,7 +788,7 @@ export function MarkdownRenderer({
   }
   
   return (
-    <div className={`markdown-body ${isStreaming ? 'streaming-cursor' : ''}`} style={{ padding: '0 16px' }}>
+    <div className={`markdown-body ${isStreaming ? 'streaming-cursor' : ''}`} style={{ padding: '16px' }}>
       <XMarkdown 
         config={{ extensions: Latex() }}
         components={{ 
