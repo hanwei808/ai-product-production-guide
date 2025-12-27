@@ -254,7 +254,7 @@ flowchart TD
 | -------- | ----------------- | --------------------- |
 | 单轮对话 | 无上下文单次交互  | 简单 ChatClient 调用  |
 | 多轮对话 | 带历史上下文      | MessageChatMemory     |
-| 流式对话 | 逐 Token 实时返回 | Flux<String> 响应     |
+| 流式对话 | 逐 Token 实时返回 | `Flux<String>` 响应   |
 | RAG 对话 | 结合知识库检索    | QuestionAnswerAdvisor |
 | Agent    | 支持工具调用      | Tool Calling 启用     |
 

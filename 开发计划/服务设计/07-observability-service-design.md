@@ -380,14 +380,14 @@ graph TD
 
 ### 4.2 成本计算公式
 
-$$
-\text{Cost} = \frac{\text{Input Tokens}}{1000} \times P_{input} + \frac{\text{Output Tokens}}{1000} \times P_{output}
-$$
+```
+Cost = (Input Tokens / 1000) × P_input + (Output Tokens / 1000) × P_output
+```
 
 其中：
 
-- $P_{input}$：输入 Token 单价（$/1K tokens）
-- $P_{output}$：输出 Token 单价（$/1K tokens）
+- `P_input`：输入 Token 单价（$/1K tokens）
+- `P_output`：输出 Token 单价（$/1K tokens）
 
 ### 4.3 模型定价配置
 
