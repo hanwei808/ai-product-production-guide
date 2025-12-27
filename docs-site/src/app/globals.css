@@ -188,8 +188,10 @@ html[data-theme='dark'] body {
 /* Markdown 内容样式 */
 .markdown-body {
   max-width: 900px;
+  width: 100%;
   line-height: 1.8;
   color: var(--color-text-primary);
+  overflow-x: hidden; /* 防止内容撑开页面 */
 }
 
 .markdown-body h1 {
@@ -256,10 +258,20 @@ html[data-theme='dark'] body {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
+.markdown-body .table-wrapper {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 1em 0;
+  -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
+}
+
 .markdown-body table {
   border-collapse: collapse;
-  width: 100%;
-  margin: 1em 0;
+  width: max-content; /* 让表格按内容自适应宽度 */
+  min-width: 100%; /* 至少占满容器 */
 }
 
 .markdown-body table th,
@@ -595,10 +607,26 @@ html[data-theme='dark'] body {
     border-radius: var(--radius-sm);
   }
 
-  .markdown-body table {
+  /* 移动端表格滚动容器 */
+  .markdown-body .table-wrapper {
     display: block;
+    width: 100%;
+    max-width: calc(100vw - 32px); /* 减去左右 padding */
     overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .markdown-body table {
+    width: max-content;
+    min-width: 100%;
     white-space: nowrap;
+  }
+
+  .markdown-body table th,
+  .markdown-body table td {
+    padding: 6px 10px;
+    font-size: 14px;
   }
 
   .markdown-body blockquote {

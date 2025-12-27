@@ -33,6 +33,17 @@ const Code: React.FC<ComponentProps> = React.memo((props) => {
 
 Code.displayName = 'Code'
 
+// 自定义表格组件，添加水平滚动容器
+const Table: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = React.memo((props) => {
+  return (
+    <div className="table-wrapper">
+      <table {...props} />
+    </div>
+  )
+})
+
+Table.displayName = 'Table'
+
 export function MarkdownRenderer({ 
   content, 
   streaming = true,
@@ -83,7 +94,7 @@ export function MarkdownRenderer({
   return (
     <div className={`markdown-body ${isStreaming ? 'streaming-cursor' : ''}`}>
       <XMarkdown 
-        components={{ code: Code }}
+        components={{ code: Code, table: Table }}
         paragraphTag="div"
       >
         {displayContent}
