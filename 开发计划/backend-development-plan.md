@@ -150,135 +150,7 @@ gantt
 | Ollama 配置       | GPU 驱动, 模型拉取 (qwen2.5/deepseek-r1) | 模型列表, 健康检查脚本            |
 | LangFuse 部署     | Docker Compose, 环境变量                 | 观测平台可访问                    |
 
-#### 关键配置
-
-```yaml
-# docker-compose.infra.yml
-services:
-  # ============ 存储层 ============
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: ai_product
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: ${PG_PASSWORD}
-    ports:
-      - '5432:5432'
-    volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Milvus 依赖：etcd
-  etcd:
-    image: quay.io/coreos/etcd:v3.5.16
-    environment:
-      ETCD_AUTO_COMPACTION_MODE: revision
-      ETCD_AUTO_COMPACTION_RETENTION: '1000'
-      ETCD_QUOTA_BACKEND_BYTES: '4294967296'
-    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls=http://0.0.0.0:2379 --data-dir /etcd
-    volumes:
-      - etcd_data:/etcd
-
-  # Milvus 依赖：minio
-  minio:
-    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
-    command: minio server /minio_data --console-address ":9001"
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    volumes:
-      - minio_data:/minio_data
-
-  milvus:
-    image: milvusdb/milvus:v2.5-latest
-    command: ['milvus', 'run', 'standalone']
-    environment:
-      ETCD_ENDPOINTS: etcd:2379
-      MINIO_ADDRESS: minio:9000
-      MINIO_ACCESS_KEY_ID: minioadmin
-      MINIO_SECRET_ACCESS_KEY: ${MINIO_PASSWORD}
-    ports:
-      - '19530:19530' # gRPC
-      - '9091:9091' # Metrics
-    depends_on:
-      - etcd
-      - minio
-    volumes:
-      - milvus_data:/var/lib/milvus
-
-  # ============ 推理层 ============
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - '11434:11434'
-    volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-
-  # ============ 可观测层 ============
-  langfuse:
-    image: langfuse/langfuse:latest
-    environment:
-      DATABASE_URL: postgresql://admin:${PG_PASSWORD}@postgres:5432/langfuse
-      NEXTAUTH_SECRET: ${LANGFUSE_SECRET}
-      NEXTAUTH_URL: http://localhost:3000
-      SALT: ${LANGFUSE_SALT}
-    ports:
-      - '3000:3000'
-    depends_on:
-      - postgres
-
-  # ============ 消息队列（可选）============
-  rabbitmq:
-    image: rabbitmq:3.13-management
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-    ports:
-      - '5672:5672'
-      - '15672:15672' # Management UI
-
-volumes:
-  postgres_data:
-  redis_data:
-  etcd_data:
-  minio_data:
-  milvus_data:
-  ollama_data:
-```
-
-> 💡 **环境变量说明**: 创建 `.env` 文件配置敏感信息：
->
-> ```bash
-> PG_PASSWORD=your_secure_password
-> REDIS_PASSWORD=your_redis_password
-> MINIO_PASSWORD=your_minio_password
-> LANGFUSE_SECRET=your_langfuse_secret
-> LANGFUSE_SALT=your_langfuse_salt
-> RABBITMQ_PASSWORD=your_rabbitmq_password
-> ```
+> 💡 **配置文件**: 基础设施 Docker Compose 配置详见 [Docker & Kubernetes 基础设施](../技术选型/docker-kubernetes-guide.md)
 
 ---
 
@@ -330,89 +202,17 @@ graph TD
     ToolRegistry --> Data
 ```
 
-#### 核心依赖
+#### 核心技术栈
 
-```xml
-<!-- pom.xml -->
-<dependencies>
-    <!-- Spring AI Alibaba -->
-    <dependency>
-        <groupId>com.alibaba.cloud.ai</groupId>
-        <artifactId>spring-ai-alibaba-starter</artifactId>
-        <version>1.1.0.0-RC2</version>
-    </dependency>
-
-    <!-- Milvus Client -->
-    <dependency>
-        <groupId>io.milvus</groupId>
-        <artifactId>milvus-sdk-java</artifactId>
-        <version>2.5.4</version>
-    </dependency>
-
-    <!-- OpenTelemetry (用于 LangFuse 链路追踪) -->
-    <dependency>
-        <groupId>io.opentelemetry</groupId>
-        <artifactId>opentelemetry-api</artifactId>
-        <version>1.43.0</version>
-    </dependency>
-    <dependency>
-        <groupId>io.opentelemetry</groupId>
-        <artifactId>opentelemetry-sdk</artifactId>
-        <version>1.43.0</version>
-    </dependency>
-    <dependency>
-        <groupId>io.opentelemetry</groupId>
-        <artifactId>opentelemetry-exporter-otlp</artifactId>
-        <version>1.43.0</version>
-    </dependency>
-</dependencies>
-```
+| 组件              | 版本   | 用途                      |
+| ----------------- | ------ | ------------------------- |
+| Spring AI Alibaba | 1.1.x  | Agent 框架、ChatClient    |
+| Milvus SDK        | 2.5.x  | 向量数据库客户端          |
+| OpenTelemetry     | 1.43.x | 链路追踪（集成 LangFuse） |
 
 > ⚠️ **注意**: LangFuse 目前无官方 Java SDK，推荐通过 OpenTelemetry 协议将链路数据导出至 LangFuse。详见 [LangFuse OpenTelemetry 集成文档](https://langfuse.com/docs/integrations/opentelemetry)。
-
-#### 关键代码示例
-
-```java
-// ChatController.java
-@RestController
-@RequestMapping("/api/chat")
-public class ChatController {
-
-    private final ChatClient chatClient;
-    private final Tracer tracer; // OpenTelemetry Tracer
-
-    @PostMapping("/completions")
-    public Flux<String> chat(@RequestBody ChatRequest request) {
-        Span span = tracer.spanBuilder("chat-completion")
-            .setAttribute("user.message", request.getMessage())
-            .startSpan();
-
-        try (Scope scope = span.makeCurrent()) {
-            return chatClient.prompt()
-                .user(request.getMessage())
-                .advisors(new QuestionAnswerAdvisor(vectorStore))
-                .stream()
-                .content()
-                .doOnComplete(() -> span.end())
-                .doOnError(e -> {
-                    span.recordException(e);
-                    span.end();
-                });
-        }
-    }
-}
-```
-
-> 💡 **OpenTelemetry 配置**: 在 `application.yml` 中配置 OTLP 导出器将链路数据发送至 LangFuse：
 >
-> ```yaml
-> otel:
->   exporter:
->     otlp:
->       endpoint: http://langfuse:4318
->       headers:
->         Authorization: Bearer ${LANGFUSE_PUBLIC_KEY}
-> ```
+> 📖 详细配置请参考 [ai-core-service 设计文档](服务设计/03-ai-core-service-design.md)
 
 ---
 
@@ -478,32 +278,11 @@ flowchart LR
     Store --> PG[(PostgreSQL<br/>元数据)]
 ```
 
-#### Unstructured 配置示例
-
-```python
-# etl_service/processor.py
-from unstructured.partition.auto import partition
-from unstructured.chunking.title import chunk_by_title
-
-def process_document(file_path: str) -> list:
-    # 1. 解析文档 (支持 64+ 格式)
-    elements = partition(
-        filename=file_path,
-        strategy="hi_res",  # 高精度模式
-        languages=["chi_sim", "eng"],  # OCR 语言
-        extract_images_in_pdf=True,
-    )
-
-    # 2. 语义切片
-    chunks = chunk_by_title(
-        elements,
-        max_characters=1000,
-        overlap=100,
-        combine_text_under_n_chars=200,
-    )
-
-    return chunks
-```
+> 📖 详细实现请参考：
+>
+> - [rag-service 设计文档](服务设计/04-rag-service-design.md)
+> - [etl-service 设计文档](服务设计/05-etl-service-design.md)
+> - [Unstructured ETL 指南](../技术选型/unstructured-etl-guide.md)
 
 ---
 
@@ -564,35 +343,11 @@ sequenceDiagram
     Dify-->>User: 展示结果
 ```
 
-#### MCP Server 实现
-
-```java
-// McpServerConfig.java
-@Configuration
-public class McpServerConfig {
-
-    @Bean
-    public McpServer mcpServer(ToolRegistry toolRegistry) {
-        return McpServer.builder()
-            .name("ai-core-mcp")
-            .version("1.0.0")
-            .tools(toolRegistry.getAllTools())
-            .build();
-    }
-}
-
-// 工具定义示例
-@Tool(name = "search_knowledge", description = "搜索知识库")
-public class SearchKnowledgeTool {
-
-    @Autowired
-    private RagServiceClient ragClient;
-
-    public String execute(String query, int topK) {
-        return ragClient.search(query, topK);
-    }
-}
-```
+> 📖 详细实现请参考：
+>
+> - [ai-core-service 设计文档](服务设计/03-ai-core-service-design.md)
+> - [dify-service 设计文档](服务设计/06-dify-service-design.md)
+> - [Dify & Spring AI Alibaba 指南](../技术选型/dify-spring-ai-alibaba-guide.md)
 
 ---
 
@@ -618,66 +373,13 @@ gantt
     监控告警配置             :c3, after c2, 2d
 ```
 
-#### vLLM 生产配置
+#### 阶段五任务说明
 
-```yaml
-# vllm-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: vllm-inference
-spec:
-  replicas: 2
-  template:
-    spec:
-      containers:
-        - name: vllm
-          image: vllm/vllm-openai:latest
-          args:
-            - --model=/models/qwen2.5-72b-instruct-awq
-            - --tensor-parallel-size=4
-            - --max-model-len=32768
-            - --quantization=awq
-            - --enable-chunked-prefill
-          resources:
-            limits:
-              nvidia.com/gpu: 4
-          ports:
-            - containerPort: 8000
-```
-
-#### Promptfoo CI 集成
-
-```yaml
-# .github/workflows/prompt-test.yml
-name: Prompt Regression Test
-
-on:
-  pull_request:
-    paths:
-      - 'prompts/**'
-      - 'src/**/prompt*.java'
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Promptfoo
-        run: npm install -g promptfoo
-
-      - name: Run Tests
-        run: promptfoo eval -c promptfooconfig.yaml
-        env:
-          LANGFUSE_API_KEY: ${{ secrets.LANGFUSE_API_KEY }}
-
-      - name: Upload Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: promptfoo-results
-          path: output/
-```
+| 任务           | 技术要点                           | 参考文档                                                                 |
+| -------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| vLLM 部署      | K8s Deployment, GPU 调度, 模型量化 | [Ollama & vLLM 推理指南](../技术选型/ollama-vllm-guide.md)               |
+| Promptfoo 集成 | CI/CD Pipeline, Prompt 回归测试    | [LangFuse & Promptfoo 观测指南](../技术选型/langfuse-promptfoo-guide.md) |
+| K8s 部署       | Helm Chart, 灰度发布, 监控告警     | [Docker & Kubernetes 基础设施](../技术选型/docker-kubernetes-guide.md)   |
 
 ---
 
@@ -718,76 +420,19 @@ jobs:
 
 ## 🔧 补充：跨语言服务通信
 
-### gRPC 接口定义示例 (rag-service)
+### 通信方式说明
 
-```protobuf
-// proto/rag_service.proto
-syntax = "proto3";
+| 通信类型 | 协议           | 适用场景                       | 参考                          |
+| -------- | -------------- | ------------------------------ | ----------------------------- |
+| 同步调用 | gRPC           | ai-core ↔ rag-service 向量检索 | Protocol Buffers 定义接口契约 |
+| 同步调用 | REST           | 通用 API 调用                  | OpenAPI 规范                  |
+| 服务发现 | Nacos          | 微服务注册与配置               | Spring Cloud Alibaba          |
+| 异步通信 | RabbitMQ/Kafka | ETL 任务分发                   | 消息队列                      |
 
-package rag;
-
-option java_package = "com.example.rag.grpc";
-option java_outer_classname = "RagServiceProto";
-
-service RagService {
-  // 向量检索
-  rpc Search(SearchRequest) returns (SearchResponse);
-  // 多路召回
-  rpc HybridSearch(HybridSearchRequest) returns (SearchResponse);
-}
-
-message SearchRequest {
-  string query = 1;
-  int32 top_k = 2;
-  string collection_name = 3;
-  map<string, string> filters = 4;
-}
-
-message SearchResponse {
-  repeated Document documents = 1;
-  float latency_ms = 2;
-}
-
-message Document {
-  string id = 1;
-  string content = 2;
-  float score = 3;
-  map<string, string> metadata = 4;
-}
-
-message HybridSearchRequest {
-  string query = 1;
-  int32 top_k = 2;
-  float dense_weight = 3;  // 稠密向量权重
-  float sparse_weight = 4; // 稀疏向量权重 (BM25)
-}
-```
-
-### 服务发现配置 (Nacos)
-
-```yaml
-# application-nacos.yml (ai-core-service)
-spring:
-  cloud:
-    nacos:
-      discovery:
-        server-addr: ${NACOS_SERVER:nacos:8848}
-        namespace: ${NACOS_NAMESPACE:ai-product}
-      config:
-        server-addr: ${NACOS_SERVER:nacos:8848}
-        file-extension: yaml
-
-  # 服务注册
-  application:
-    name: ai-core-service
-
-# gRPC 客户端配置
-grpc:
-  client:
-    rag-service:
-      address: 'discovery:///rag-service'
-      negotiationType: plaintext
-```
+> 📖 详细接口定义请参考各服务设计文档：
+>
+> - [rag-service 设计文档](服务设计/04-rag-service-design.md) - 包含 gRPC Proto 定义
+> - [ai-core-service 设计文档](服务设计/03-ai-core-service-design.md) - 包含 Nacos 配置
 
 ---
 
