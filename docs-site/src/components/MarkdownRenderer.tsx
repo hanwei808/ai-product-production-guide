@@ -67,7 +67,7 @@ export function MarkdownRenderer({
         setIsStreaming(false)
         clearInterval(timer)
       }
-    }, 100) // 调整流式渲染速度
+    }, 64) // 调整流式渲染速度
     
     return () => clearInterval(timer)
   }, [content, streaming, streamingSpeed])
