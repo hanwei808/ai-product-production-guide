@@ -102,13 +102,35 @@ export function getAllDocSlugs(): string[][] {
   }
   
   collectSlugs(getDocsStructure())
-  return slugs
+  
+  // 同时返回原始路径和 URL 编码版本
+  const allSlugs: string[][] = []
+  for (const slug of slugs) {
+    allSlugs.push(slug)
+    // 检查是否包含需要编码的字符
+    const encodedSlug = slug.map(s => encodeURIComponent(s))
+    const hasEncodedPart = encodedSlug.some((s, i) => s !== slug[i])
+    if (hasEncodedPart) {
+      allSlugs.push(encodedSlug)
+    }
+  }
+  
+  return allSlugs
 }
 
 // 根据 slug 获取文档内容
 export function getDocBySlug(slugPath: string[]): { content: string; title: string } | null {
+  // 解码 URL 编码的路径
+  const decodedSlugPath = slugPath.map(s => {
+    try {
+      return decodeURIComponent(s)
+    } catch {
+      return s
+    }
+  })
+  
   // 构建文件路径
-  const filePath = path.join(DOCS_ROOT, ...slugPath) + '.md'
+  const filePath = path.join(DOCS_ROOT, ...decodedSlugPath) + '.md'
   
   if (!fs.existsSync(filePath)) {
     return null
@@ -116,7 +138,7 @@ export function getDocBySlug(slugPath: string[]): { content: string; title: stri
   
   const fileContent = fs.readFileSync(filePath, 'utf-8')
   const { content, data } = matter(fileContent)
-  const title = data.title || extractTitle(content, slugPath[slugPath.length - 1])
+  const title = data.title || extractTitle(content, decodedSlugPath[decodedSlugPath.length - 1])
   
   return {
     content,

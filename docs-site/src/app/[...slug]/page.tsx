@@ -9,6 +9,9 @@ interface PageProps {
   params: Promise<{ slug: string[] }>
 }
 
+// 禁止动态参数，只允许 generateStaticParams 中定义的路径
+export const dynamicParams = false
+
 // 静态生成所有文档页面
 export async function generateStaticParams() {
   const slugs = getAllDocSlugs()
