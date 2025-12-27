@@ -161,6 +161,15 @@ body {
     #d4fc79 100%
   );
   background-attachment: fixed;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* 隐藏滚动条 - Webkit浏览器 (Chrome, Safari, Edge) */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
 }
 
 [data-theme='dark'] body {
@@ -918,23 +927,14 @@ body {
 }
 
 .app-sider .ant-layout-sider-trigger {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.4) 0%,
-    rgba(255, 255, 255, 0.2) 100%
-  );
+  background: transparent;
   border-top: 1px solid rgba(255, 255, 255, 0.5);
   color: var(--color-text-secondary);
   transition: all var(--transition-fast);
-  backdrop-filter: blur(10px);
 }
 
 [data-theme='dark'] .app-sider .ant-layout-sider-trigger {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
+  background: transparent;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
