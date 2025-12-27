@@ -20,7 +20,11 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
     <AntHeader
       className="app-header"
       style={{
-        background: 'var(--header-bg, linear-gradient(135deg, #1e293b 0%, #0f172a 100%))',
+        background: theme === 'light' 
+          ? 'rgba(255, 255, 255, 0.72)' 
+          : 'rgba(30, 30, 30, 0.72)',
+        backdropFilter: 'saturate(180%) blur(20px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -30,7 +34,10 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
         zIndex: 1000,
         top: 0,
         height: 'var(--header-height, 64px)',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+        borderBottom: theme === 'light'
+          ? '1px solid rgba(0, 0, 0, 0.1)'
+          : '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: 'none',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -45,7 +52,11 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
         
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <BookOutlined className="header-logo" style={{ fontSize: 24, color: '#3b82f6' }} />
-          <Title level={4} className="header-title" style={{ margin: 0, color: '#fff' }}>
+          <Title level={4} className="header-title" style={{ 
+            margin: 0, 
+            color: theme === 'light' ? '#1d1d1f' : '#f5f5f7',
+            fontWeight: 600,
+          }}>
             AI 产品生产指南
           </Title>
         </Link>
@@ -67,7 +78,15 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
           href="https://github.com/hanwei808/ai-product-production-guide"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: '#fff', fontSize: 20, display: 'flex', alignItems: 'center' }}
+          style={{ 
+            color: theme === 'light' ? '#1d1d1f' : '#f5f5f7', 
+            fontSize: 20, 
+            display: 'flex', 
+            alignItems: 'center',
+            transition: 'opacity 0.2s ease',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
         >
           <GithubOutlined />
         </a>

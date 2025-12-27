@@ -87,8 +87,14 @@ export function AppLayout({ children }: AppLayoutProps) {
             onCollapse={(value) => setCollapsed(value)}
             className={`app-sider ${mobileMenuOpen ? 'mobile-open' : ''}`}
             style={{
-              background: 'var(--color-bg-base)',
-              borderRight: '1px solid var(--color-border)',
+              background: theme === 'light' 
+                ? 'rgba(255, 255, 255, 0.72)' 
+                : 'rgba(30, 30, 30, 0.72)',
+              backdropFilter: 'saturate(180%) blur(20px)',
+              WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+              borderRight: theme === 'light'
+                ? '1px solid rgba(0, 0, 0, 0.1)'
+                : '1px solid rgba(255, 255, 255, 0.1)',
               overflow: 'auto',
               height: 'calc(100vh - var(--header-height, 64px))',
               position: 'fixed',
