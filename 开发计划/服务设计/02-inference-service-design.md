@@ -1,6 +1,7 @@
 # Inference Service 详细设计文档
 
-> 版本：v1.0 | 优先级：P0 | 技术栈：Ollama (开发) / vLLM (生产)
+> 版本：v1.1 | 优先级：P0 | 更新日期：2025-12-27
+> 技术栈：Ollama (开发) / vLLM (生产)
 
 ## 1. 服务概述
 
@@ -146,27 +147,51 @@ graph LR
 graph TD
     subgraph 模型分类
         Chat[对话模型]
+        Reasoning[推理模型]
         Embed[Embedding 模型]
         Rerank[重排序模型]
         VLM[视觉语言模型]
+        Code[代码模型]
     end
 
     subgraph 对话模型
-        Qwen[Qwen 2.5 系列]
-        DeepSeek[DeepSeek 系列]
-        Llama[Llama 系列]
+        Qwen3[Qwen3 系列]
+        DeepSeek[DeepSeek-V3 系列]
+        Llama[Llama 3.x 系列]
+        Gemma[Gemma 3 系列]
+    end
+
+    subgraph 推理模型
+        DeepSeekR1[DeepSeek-R1]
+        QwQ[Qwen-QwQ]
+        GPTOSS[GPT-OSS]
     end
 
     subgraph Embedding 模型
-        BGE[BGE 系列]
-        M3E[M3E 系列]
+        BGE[BGE-M3]
+        QwenEmbed[Qwen3-Embedding]
+        NomicEmbed[Nomic-Embed-Text]
     end
 
-    Chat --> Qwen
+    subgraph 视觉语言模型
+        Qwen3VL[Qwen3-VL]
+        Gemma3[Gemma3]
+        DeepSeekOCR[DeepSeek-OCR]
+    end
+
+    Chat --> Qwen3
     Chat --> DeepSeek
     Chat --> Llama
+    Chat --> Gemma
+    Reasoning --> DeepSeekR1
+    Reasoning --> QwQ
+    Reasoning --> GPTOSS
     Embed --> BGE
-    Embed --> M3E
+    Embed --> QwenEmbed
+    Embed --> NomicEmbed
+    VLM --> Qwen3VL
+    VLM --> Gemma3
+    VLM --> DeepSeekOCR
 ```
 
 ### 3.2 模型注册表设计
@@ -384,7 +409,9 @@ graph TD
         CB[Continuous Batching<br/>连续批处理]
         TP[Tensor Parallelism<br/>张量并行]
         PP[Pipeline Parallelism<br/>流水线并行]
-        Quant[量化<br/>AWQ/GPTQ/FP8]
+        Quant[量化<br/>AWQ/GPTQ/FP8/FP4]
+        SD[Speculative Decoding<br/>投机解码]
+        PC[Prefix Caching<br/>前缀缓存]
     end
 
     subgraph 效果
@@ -393,6 +420,8 @@ graph TD
         TP --> E3[大模型支持]
         PP --> E3
         Quant --> E4[推理速度 ↑]
+        SD --> E5[解码速度 ↑ 2-3x]
+        PC --> E6[重复 Prompt 加速]
     end
 ```
 
@@ -462,23 +491,43 @@ graph TB
 
 ### 7.2 Ollama 开发配置
 
-| 配置项                     | 值            | 说明           |
-| -------------------------- | ------------- | -------------- |
-| `OLLAMA_HOST`              | 0.0.0.0:11434 | 监听地址       |
-| `OLLAMA_NUM_PARALLEL`      | 2             | 并行请求数     |
-| `OLLAMA_MAX_LOADED_MODELS` | 2             | 最大加载模型数 |
-| `OLLAMA_KEEP_ALIVE`        | 5m            | 模型保持时间   |
+| 配置项                     | 值            | 说明                            |
+| -------------------------- | ------------- | ------------------------------- |
+| `OLLAMA_HOST`              | 0.0.0.0:11434 | 监听地址                        |
+| `OLLAMA_NUM_PARALLEL`      | 2             | 并行请求数                      |
+| `OLLAMA_MAX_LOADED_MODELS` | 2             | 最大加载模型数                  |
+| `OLLAMA_KEEP_ALIVE`        | 5m            | 模型保持时间                    |
+| `OLLAMA_FLASH_ATTENTION`   | 1             | 启用 Flash Attention (默认启用) |
+| `OLLAMA_VULKAN`            | 0             | Vulkan 加速 (可选)              |
+
+> **Ollama 0.13.x 新特性**:
+>
+> - Flash Attention 默认启用
+> - 支持 Logprobs API
+> - 支持 Vulkan 加速 (opt-in)
+> - 直接运行 Embedding 模型
+> - 支持 DeepSeek-V3.1/OCR 等新架构
 
 ### 7.3 vLLM 生产配置
 
-| 配置项                     | 值    | 说明           |
-| -------------------------- | ----- | -------------- |
-| `--tensor-parallel-size`   | 4     | 张量并行度     |
-| `--max-model-len`          | 32768 | 最大上下文长度 |
-| `--quantization`           | awq   | 量化方法       |
-| `--gpu-memory-utilization` | 0.95  | GPU 显存利用率 |
-| `--enable-chunked-prefill` | true  | 分块预填充     |
-| `--max-num-seqs`           | 256   | 最大并发序列   |
+| 配置项                     | 值    | 说明                    |
+| -------------------------- | ----- | ----------------------- |
+| `--tensor-parallel-size`   | 4     | 张量并行度              |
+| `--max-model-len`          | 32768 | 最大上下文长度          |
+| `--quantization`           | awq   | 量化方法 (awq/gptq/fp8) |
+| `--gpu-memory-utilization` | 0.95  | GPU 显存利用率          |
+| `--enable-chunked-prefill` | true  | 分块预填充              |
+| `--max-num-seqs`           | 256   | 最大并发序列            |
+| `--enable-prefix-caching`  | true  | 前缀缓存 (KV 复用)      |
+| `--speculative-model`      | -     | 投机解码模型 (可选)     |
+
+> **vLLM 0.13.x 新特性**:
+>
+> - V1 引擎默认启用 (V0 已弃用)
+> - 支持 FP8/FP4 量化
+> - 支持 LoRA 动态加载
+> - 支持投机解码 (Speculative Decoding)
+> - PyTorch 2.8 支持
 
 ---
 
@@ -726,11 +775,13 @@ gantt
 | -------------- | ------------------- | ------ | -------------- |
 | 代理框架       | Go / Python FastAPI | -      | 高性能代理层   |
 | 开发推理引擎   | Ollama              | 0.13.x | 本地开发       |
-| 生产推理引擎   | vLLM                | 1.0.x  | 高性能生产推理 |
+| 生产推理引擎   | vLLM                | 0.13.x | 高性能生产推理 |
 | 模型格式(开发) | GGUF                | -      | Ollama 专用    |
-| 模型格式(生产) | AWQ / GPTQ          | -      | vLLM 量化      |
+| 模型格式(生产) | AWQ / GPTQ / FP8    | -      | vLLM 量化      |
 | 负载均衡       | 内置 / Envoy        | -      | 请求分发       |
 | 指标暴露       | Prometheus          | -      | 可观测性       |
+
+> **注意**: vLLM 0.13.x 版本相比之前版本有重大更新，包括 V1 引擎默认启用、PyTorch 2.8 支持等。V0 引擎已弃用。
 
 ---
 
@@ -746,19 +797,49 @@ gantt
 
 ### 对话模型
 
-| 模型名称                     | 参数量 | 量化格式 | 显存需求 | 推荐场景   |
-| ---------------------------- | ------ | -------- | -------- | ---------- |
-| qwen2.5-7b-instruct          | 7B     | Q4_K_M   | 6GB      | 开发测试   |
-| qwen2.5-14b-instruct         | 14B    | AWQ      | 12GB     | 轻量生产   |
-| qwen2.5-72b-instruct         | 72B    | AWQ      | 48GB     | 高质量生产 |
-| deepseek-r1-distill-qwen-32b | 32B    | AWQ      | 24GB     | 推理任务   |
+| 模型名称                 | 参数量 | 量化格式 | 显存需求 | 推荐场景   |
+| ------------------------ | ------ | -------- | -------- | ---------- |
+| qwen3-8b-instruct        | 8B     | Q4_K_M   | 6GB      | 开发测试   |
+| qwen3-14b-instruct       | 14B    | AWQ      | 12GB     | 轻量生产   |
+| qwen3-32b-instruct       | 32B    | AWQ      | 24GB     | 标准生产   |
+| qwen3-235b-a22b-instruct | 235B   | FP8      | 160GB+   | 高质量生产 |
+| deepseek-v3              | 671B   | FP8      | 320GB+   | 顶级生产   |
+
+### 推理模型 (Reasoning)
+
+| 模型名称         | 参数量 | 量化格式 | 显存需求 | 推荐场景    |
+| ---------------- | ------ | -------- | -------- | ----------- |
+| deepseek-r1-7b   | 7B     | Q4_K_M   | 6GB      | 开发/轻推理 |
+| deepseek-r1-32b  | 32B    | AWQ      | 24GB     | 标准推理    |
+| deepseek-r1-671b | 671B   | FP8      | 320GB+   | 顶级推理    |
+| qwq-32b          | 32B    | AWQ      | 24GB     | 数学/代码   |
+| gpt-oss-20b      | 20B    | AWQ      | 16GB     | 通用推理    |
+
+### 视觉语言模型
+
+| 模型名称        | 参数量 | 量化格式 | 显存需求 | 推荐场景  |
+| --------------- | ------ | -------- | -------- | --------- |
+| qwen3-vl-8b     | 8B     | Q4_K_M   | 8GB      | 开发/轻量 |
+| qwen3-vl-32b    | 32B    | AWQ      | 28GB     | 生产      |
+| gemma3-27b      | 27B    | Q4_K_M   | 20GB     | 高效视觉  |
+| deepseek-ocr-3b | 3B     | Q8_0     | 4GB      | OCR 专用  |
 
 ### Embedding 模型
 
-| 模型名称          | 维度 | 显存需求 | 推荐场景 |
-| ----------------- | ---- | -------- | -------- |
-| bge-m3            | 1024 | 2GB      | 多语言   |
-| bge-large-zh-v1.5 | 1024 | 2GB      | 中文专用 |
+| 模型名称            | 维度 | 显存需求 | 推荐场景   |
+| ------------------- | ---- | -------- | ---------- |
+| bge-m3              | 1024 | 2GB      | 多语言     |
+| bge-large-zh-v1.5   | 1024 | 2GB      | 中文专用   |
+| qwen3-embedding-8b  | 4096 | 8GB      | 高质量嵌入 |
+| nomic-embed-text-v2 | 768  | 1GB      | 轻量多语言 |
+
+### 代码模型
+
+| 模型名称              | 参数量 | 量化格式 | 显存需求 | 推荐场景 |
+| --------------------- | ------ | -------- | -------- | -------- |
+| qwen3-coder-30b       | 30B    | AWQ      | 24GB     | 代码生成 |
+| deepseek-coder-v2-16b | 16B    | AWQ      | 12GB     | 轻量代码 |
+| devstral-24b          | 24B    | AWQ      | 18GB     | 代码代理 |
 
 ---
 
@@ -776,3 +857,84 @@ gantt
 | 50301  | 503         | 服务暂时不可用   |
 | 50302  | 503         | 模型未就绪       |
 | 50401  | 504         | 推理超时         |
+
+---
+
+## 附录 C：高级 API 特性
+
+### Logprobs (日志概率)
+
+支持返回 Token 的对数概率，用于：
+
+- 分类任务评估
+- 检索问答评估
+- 自动补全置信度
+- 困惑度计算
+
+```json
+// 请求
+{
+  "model": "qwen3-8b-instruct",
+  "messages": [...],
+  "logprobs": true,
+  "top_logprobs": 3
+}
+
+// 响应
+{
+  "choices": [{
+    "logprobs": {
+      "content": [{
+        "token": "Hello",
+        "logprob": -0.836,
+        "top_logprobs": [
+          {"token": "Hello", "logprob": -0.836},
+          {"token": "Hi", "logprob": -1.259},
+          {"token": "Hey", "logprob": -1.268}
+        ]
+      }]
+    }
+  }]
+}
+```
+
+### Structured Outputs (结构化输出)
+
+支持通过 JSON Schema 约束输出格式：
+
+```json
+{
+  "model": "qwen3-8b-instruct",
+  "messages": [...],
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "response",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "answer": {"type": "string"},
+          "confidence": {"type": "number"}
+        },
+        "required": ["answer", "confidence"]
+      }
+    }
+  }
+}
+```
+
+### Thinking Mode (思考模式)
+
+支持推理模型的思考链输出：
+
+```json
+{
+  "model": "deepseek-r1-32b",
+  "messages": [...],
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 4096
+  }
+}
+```

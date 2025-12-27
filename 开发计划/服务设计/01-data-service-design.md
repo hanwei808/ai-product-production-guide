@@ -1,6 +1,7 @@
 # Data Service 详细设计文档
 
-> 版本：v1.0 | 优先级：P0 | 技术栈：Spring Boot 3.x + PostgreSQL 15.x
+> 版本：v1.1 | 更新日期：2025-12-27 | 优先级：P0  
+> 技术栈：Java 21 + Spring Boot 3.4.x + PostgreSQL 17.x
 
 ## 1. 服务概述
 
@@ -287,6 +288,19 @@ graph LR
 | `messages` | `created_at` | RANGE 月份 | 滚动 12 个月 |
 | `api_logs` | `created_at` | RANGE 月份 | 滚动 6 个月  |
 
+### 3.4 关键索引设计
+
+| 表名             | 索引名                      | 字段                              | 类型   | 说明               |
+| ---------------- | --------------------------- | --------------------------------- | ------ | ------------------ |
+| `users`          | `idx_users_email`           | email                             | UNIQUE | 邮箱唯一约束       |
+| `users`          | `idx_users_tenant`          | tenant_id                         | B-tree | 租户查询加速       |
+| `conversations`  | `idx_conv_user_created`     | user_id, created_at DESC          | B-tree | 用户会话列表查询   |
+| `messages`       | `idx_messages_conv_created` | conversation_id, created_at ASC   | B-tree | 会话消息时序查询   |
+| `documents`      | `idx_documents_kb_status`   | knowledge_base_id, process_status | B-tree | 知识库文档状态筛选 |
+| `chunk_metadata` | `idx_chunk_document`        | document_id, chunk_index          | B-tree | 文档切片顺序查询   |
+| `api_keys`       | `idx_apikeys_user`          | user_id                           | B-tree | 用户密钥查询       |
+| `api_keys`       | `idx_apikeys_hash`          | key_hash                          | UNIQUE | 密钥哈希唯一约束   |
+
 ---
 
 ## 4. API 设计
@@ -509,6 +523,16 @@ graph TD
 | 密码存储     | BCrypt 哈希                        |
 | SQL 注入防护 | 参数化查询 (JPA/MyBatis)           |
 
+#### 限流配置细则
+
+| 限流维度 | 限制       | 时间窗口 | 说明                         |
+| -------- | ---------- | -------- | ---------------------------- |
+| 全局     | 10,000 req | 1 min    | 服务整体保护                 |
+| 租户级   | 1,000 req  | 1 min    | 按 tenant_id 隔离            |
+| 用户级   | 100 req    | 1 min    | 按 user_id 限制              |
+| IP 级    | 50 req     | 1 min    | 防止匿名攻击                 |
+| 单接口   | 按接口配置 | -        | 敏感接口可单独配置更严格限流 |
+
 ### 6.4 可观测性
 
 | 观测维度 | 实现方式                                    |
@@ -517,6 +541,16 @@ graph TD
 | 指标     | Micrometer + Prometheus 暴露业务指标        |
 | 链路追踪 | OpenTelemetry → LangFuse (作为上游的一部分) |
 | 健康检查 | `/actuator/health` 包含数据库连接状态       |
+
+#### 健康检查端点
+
+| 端点                         | 用途           | 说明                      |
+| ---------------------------- | -------------- | ------------------------- |
+| `/actuator/health`           | 综合健康状态   | 包含所有组件状态          |
+| `/actuator/health/liveness`  | K8s 存活探针   | 服务是否存活              |
+| `/actuator/health/readiness` | K8s 就绪探针   | 服务是否可接收流量        |
+| `/actuator/health/db`        | 数据库连接状态 | PostgreSQL 连接池健康检查 |
+| `/actuator/health/redis`     | 缓存连接状态   | Redis 连接健康检查        |
 
 #### 关键业务指标
 
@@ -593,7 +627,7 @@ gantt
     axisFormat  Week %W
 
     section 基础框架
-    项目骨架搭建           :a1, 2025-01-06, 2d
+    项目骨架搭建           :a1, 2026-01-06, 2d
     数据库 Schema 设计     :a2, after a1, 2d
     基础 CRUD 实现         :a3, after a2, 3d
 
@@ -617,17 +651,19 @@ gantt
 
 ## 9. 技术选型摘要
 
-| 类别     | 技术选型          | 版本  | 说明           |
-| -------- | ----------------- | ----- | -------------- |
-| 框架     | Spring Boot       | 3.3.x | 主框架         |
-| 持久层   | Spring Data JPA   | -     | ORM 框架       |
-| 数据库   | PostgreSQL        | 15.x  | 主数据库       |
-| 缓存     | Redis             | 7.x   | 分布式缓存     |
-| 本地缓存 | Caffeine          | 3.x   | 二级缓存       |
-| 连接池   | HikariCP          | -     | 数据库连接池   |
-| API 文档 | SpringDoc OpenAPI | 2.x   | Swagger UI     |
-| 数据迁移 | Flyway            | 10.x  | 数据库版本管理 |
-| 对象映射 | MapStruct         | 1.5.x | DTO 转换       |
+| 类别     | 技术选型            | 版本   | 说明                               |
+| -------- | ------------------- | ------ | ---------------------------------- |
+| JDK      | Eclipse Temurin     | 21 LTS | 长期支持版本，支持 Virtual Threads |
+| 框架     | Spring Boot         | 3.4.x  | 主框架，Virtual Threads 支持增强   |
+| 持久层   | Spring Data JPA     | -      | ORM 框架                           |
+| 数据库   | PostgreSQL          | 17.x   | 主数据库 (2024.09 发布)            |
+| 缓存     | Redis               | 7.x    | 分布式缓存                         |
+| 本地缓存 | Caffeine            | 3.x    | 二级缓存                           |
+| 连接池   | HikariCP            | -      | 数据库连接池                       |
+| API 文档 | SpringDoc OpenAPI   | 2.x    | Swagger UI                         |
+| 数据迁移 | Flyway              | 11.x   | 数据库版本管理                     |
+| 对象映射 | MapStruct           | 1.6.x  | DTO 转换                           |
+| 校验     | Hibernate Validator | 8.x    | Bean Validation 3.0                |
 
 ---
 
@@ -658,13 +694,41 @@ gantt
 
 ## 附录 B：配置项清单
 
+### B.1 核心配置
+
 | 配置项                                       | 默认值    | 说明                 |
 | -------------------------------------------- | --------- | -------------------- |
 | `spring.datasource.url`                      | -         | 数据库连接 URL       |
 | `spring.datasource.hikari.maximum-pool-size` | 20        | 最大连接数           |
+| `spring.datasource.hikari.minimum-idle`      | 5         | 最小空闲连接数       |
 | `spring.data.redis.host`                     | localhost | Redis 地址           |
+| `spring.data.redis.port`                     | 6379      | Redis 端口           |
 | `app.cache.conversation.ttl`                 | 600       | 会话缓存 TTL (秒)    |
 | `app.cache.prompt.ttl`                       | 300       | Prompt 缓存 TTL (秒) |
 | `app.security.jwt.expiration`                | 86400     | JWT 有效期 (秒)      |
 | `app.pagination.default-size`                | 20        | 默认分页大小         |
 | `app.pagination.max-size`                    | 100       | 最大分页大小         |
+
+### B.2 Virtual Threads 配置 (Java 21+)
+
+| 配置项                                       | 默认值 | 说明                     |
+| -------------------------------------------- | ------ | ------------------------ |
+| `spring.threads.virtual.enabled`             | true   | 启用虚拟线程             |
+| `spring.datasource.hikari.maximum-pool-size` | 10     | 使用虚拟线程时可适当降低 |
+
+### B.3 JPA 配置
+
+| 配置项                                            | 默认值   | 说明                       |
+| ------------------------------------------------- | -------- | -------------------------- |
+| `spring.jpa.open-in-view`                         | false    | 关闭 OSIV 防止延迟加载问题 |
+| `spring.jpa.hibernate.ddl-auto`                   | validate | 生产环境仅验证 Schema      |
+| `spring.jpa.properties.hibernate.jdbc.batch_size` | 50       | 批量操作大小               |
+
+### B.4 限流配置
+
+| 配置项                           | 默认值 | 说明               |
+| -------------------------------- | ------ | ------------------ |
+| `app.rate-limit.global.requests` | 10000  | 全局每分钟请求限制 |
+| `app.rate-limit.tenant.requests` | 1000   | 租户每分钟请求限制 |
+| `app.rate-limit.user.requests`   | 100    | 用户每分钟请求限制 |
+| `app.rate-limit.ip.requests`     | 50     | IP 每分钟请求限制  |

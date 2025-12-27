@@ -1,6 +1,7 @@
 # ETL Service 详细设计文档
 
-> 版本：v1.0 | 优先级：P2 | 技术栈：Python 3.11+ / Unstructured.io 0.18.x
+> 版本：v1.1 | 优先级：P2 | 更新日期：2025-12-27
+> 技术栈：Python 3.11+ / Unstructured.io 0.18.22+
 
 ## 1. 服务概述
 
@@ -1067,6 +1068,24 @@ graph TD
 | 内容脱敏     | 可配置敏感信息过滤 |
 | 租户隔离     | 存储路径按租户隔离 |
 
+### 13.4 依赖安全
+
+> ⚠️ **安全提示**：Unstructured 0.18.x 系列已修复多项 CVE 漏洞，建议使用 0.18.22+ 版本。
+
+| CVE/漏洞            | 影响组件      | 修复版本 | 说明               |
+| ------------------- | ------------- | -------- | ------------------ |
+| GHSA-gm8q-m8mv-jj5m | partition_msg | 0.18.18  | MSG 附件路径遍历   |
+| GHSA-vr63-x8vc-m265 | pypdf         | 0.18.17  | PDF 解析漏洞       |
+| GHSA-9548-qrrj-x5pj | aiohttp       | 0.18.14  | 异步 HTTP 安全问题 |
+| fonttools CVE       | fonttools     | 0.18.22  | 字体处理安全       |
+
+**安全最佳实践**：
+
+1. 定期更新 Unstructured 及其依赖到最新版本
+2. 启用依赖漏洞扫描 (如 `pip-audit`、`safety`)
+3. 隔离文档处理环境，限制网络和文件系统访问
+4. 对上传文件进行病毒扫描和类型验证
+
 ### 13.3 访问控制
 
 | 操作         | 权限要求      |
@@ -1173,7 +1192,78 @@ graph TD
     Worker1 --> S3
 ```
 
-### 15.3 资源配置建议
+### 15.3 Docker 部署示例
+
+```dockerfile
+# Dockerfile for etl-service
+FROM downloads.unstructured.io/unstructured-io/unstructured:0.18.22
+
+WORKDIR /app
+
+# 安装额外依赖
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制应用代码
+COPY src/ ./src/
+COPY config/ ./config/
+
+# 环境变量
+ENV PYTHONUNBUFFERED=1 \
+    ETL_HTTP_PORT=8001 \
+    ETL_QUEUE_CONCURRENCY=4
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+EXPOSE 8001
+
+# 启动命令
+CMD ["python", "-m", "src.main"]
+```
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  etl-api:
+    build: .
+    ports:
+      - '8001:8001'
+    environment:
+      - ETL_QUEUE_BROKER_URL=amqp://rabbitmq:5672
+      - ETL_STORAGE_MILVUS_HOST=milvus
+    depends_on:
+      - rabbitmq
+      - milvus
+
+  etl-worker:
+    build: .
+    command: ['celery', '-A', 'src.tasks', 'worker', '-l', 'info']
+    environment:
+      - ETL_QUEUE_BROKER_URL=amqp://rabbitmq:5672
+      - ETL_STORAGE_MILVUS_HOST=milvus
+    deploy:
+      replicas: 3
+    depends_on:
+      - rabbitmq
+      - milvus
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+
+  milvus:
+    image: milvusdb/milvus:v2.4.0
+    ports:
+      - '19530:19530'
+```
+
+### 15.4 资源配置建议
 
 | 环境 | API Pod | Worker Pod | 副本数              |
 | ---- | ------- | ---------- | ------------------- |
@@ -1230,6 +1320,7 @@ graph TD
         CleanerExt[Cleaner 扩展]
         ChunkerExt[Chunker 扩展]
         StorageExt[Storage 扩展]
+        EmbedderExt[Embedder 扩展]
     end
 
     subgraph 实现
@@ -1237,12 +1328,14 @@ graph TD
         CustomCleaner[自定义清洗器]
         CustomChunker[自定义切片器]
         CustomStorage[自定义存储]
+        VoyageAI[VoyageAI 集成]
     end
 
     ParserExt --> CustomParser
     CleanerExt --> CustomCleaner
     ChunkerExt --> CustomChunker
     StorageExt --> CustomStorage
+    EmbedderExt --> VoyageAI
 ```
 
 ### 17.2 扩展接口
@@ -1255,9 +1348,106 @@ graph TD
 | Embedder | BaseEmbedder | 继承实现 embed |
 | Storage  | BaseStorage  | 继承实现 write |
 
+### 17.3 第三方集成
+
+| 集成项      | 版本要求         | 说明              |
+| ----------- | ---------------- | ----------------- |
+| VoyageAI    | voyage-context-3 | 0.18.20+ 新增支持 |
+| Tesseract   | 5.0+             | OCR 引擎          |
+| Poppler     | 22.0+            | PDF 渲染          |
+| LibreOffice | 7.0+             | Office 文档转换   |
+| Pandoc      | 2.14.2+          | RTF/EPUB 处理     |
+
 ---
 
-## 18. 相关文档
+## 18. 代码示例
+
+### 18.1 基础文档解析
+
+```python
+from unstructured.partition.auto import partition
+from unstructured.chunking.title import chunk_by_title
+
+# 自动检测格式并解析
+elements = partition(
+    filename="document.pdf",
+    strategy="hi_res",  # 高精度模式
+    languages=["chi_sim", "eng"],  # 支持中英文 OCR
+)
+
+# 按标题分块
+chunks = chunk_by_title(
+    elements,
+    max_characters=1000,
+    overlap=100,
+    combine_text_under_n_chars=200,
+)
+
+for chunk in chunks:
+    print(f"Chunk: {chunk.text[:100]}...")
+    print(f"Metadata: {chunk.metadata}")
+```
+
+### 18.2 VLM 增强处理
+
+```python
+from unstructured.partition.pdf import partition_pdf
+
+# 使用 VLM 增强的 PDF 解析
+elements = partition_pdf(
+    filename="complex_document.pdf",
+    strategy="hi_res",
+    infer_table_structure=True,
+    extract_images_in_pdf=True,
+    # VLM 配置（需要 inference-service 支持）
+    # hi_res_model_name="your-vlm-model",
+)
+
+# 提取表格
+tables = [el for el in elements if el.category == "Table"]
+for table in tables:
+    print(table.metadata.text_as_html)  # HTML 格式表格
+```
+
+### 18.3 异步任务处理
+
+```python
+from celery import Celery
+from typing import Dict, Any
+
+app = Celery('etl_tasks', broker='amqp://localhost')
+
+@app.task(bind=True, max_retries=3)
+def process_document(self, doc_id: str, config: Dict[str, Any]) -> Dict:
+    """异步文档处理任务"""
+    try:
+        # 1. 下载文件
+        file_path = download_from_s3(doc_id)
+
+        # 2. 解析文档
+        elements = partition(
+            filename=file_path,
+            strategy=config.get("strategy", "auto"),
+        )
+
+        # 3. 清洗和分块
+        chunks = chunk_by_title(elements, **config.get("chunk_config", {}))
+
+        # 4. 向量化
+        embeddings = generate_embeddings(chunks)
+
+        # 5. 入库
+        upsert_to_milvus(doc_id, chunks, embeddings)
+
+        return {"status": "success", "chunks": len(chunks)}
+
+    except Exception as e:
+        self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+```
+
+---
+
+## 19. 相关文档
 
 - [后端开发计划总览](../backend-development-plan.md)
 - [Data Service 设计](./01-data-service-design.md)
@@ -1266,3 +1456,42 @@ graph TD
 - [RAG Service 设计](./04-rag-service-design.md)
 - [Unstructured ETL 指南](../../技术选型/unstructured-etl-guide.md)
 - [PostgreSQL & Milvus 存储指南](../../技术选型/postgresql-milvus-guide.md)
+
+## 20. 附录
+
+### 20.1 环境变量参考
+
+| 环境变量                   | 说明               | 默认值      |
+| -------------------------- | ------------------ | ----------- |
+| `ETL_HTTP_PORT`            | HTTP 服务端口      | 8001        |
+| `ETL_PARSE_STRATEGY`       | 默认解析策略       | auto        |
+| `ETL_PARSE_OCR_LANGUAGES`  | OCR 语言           | chi_sim,eng |
+| `ETL_CHUNK_MAX_CHARACTERS` | 最大分块字符数     | 1000        |
+| `ETL_CHUNK_OVERLAP`        | 重叠字符数         | 100         |
+| `ETL_VLM_ENABLED`          | 启用 VLM           | false       |
+| `ETL_QUEUE_BROKER_URL`     | RabbitMQ 连接 URL  | -           |
+| `ETL_QUEUE_CONCURRENCY`    | Worker 并发数      | 4           |
+| `ETL_STORAGE_MILVUS_HOST`  | Milvus 地址        | localhost   |
+| `ETL_STORAGE_S3_BUCKET`    | S3 存储桶          | -           |
+| `ETL_EMBEDDING_ENDPOINT`   | Embedding API 端点 | -           |
+| `ETL_EMBEDDING_BATCH_SIZE` | Embedding 批大小   | 100         |
+| `OCR_AGENT_CACHE_SIZE`     | OCR 缓存大小       | 10          |
+| `DO_NOT_TRACK`             | 禁用遥测           | false       |
+
+### 20.2 常见问题排查
+
+| 问题               | 可能原因              | 解决方案                            |
+| ------------------ | --------------------- | ----------------------------------- |
+| OCR 识别率低       | 图像质量差/语言不匹配 | 调整解析策略为 hi_res，检查语言配置 |
+| 内存溢出           | 文件过大/并发过高     | 启用流式处理，降低并发数            |
+| Milvus 写入超时    | 网络问题/集群负载高   | 检查网络连接，调整批量大小          |
+| 任务长时间 Pending | Worker 不足/队列堆积  | 扩展 Worker 副本数                  |
+| 编码错误           | 非 UTF-8 文件         | 已自动使用 charset-normalizer 处理  |
+
+### 20.3 性能调优建议
+
+1. **大文件处理**：对于 > 100MB 文件，启用分页流式处理
+2. **批量导入**：使用专用低优先级队列，避免阻塞普通任务
+3. **Embedding 优化**：启用缓存，避免重复计算
+4. **OCR 优化**：设置 `OCR_AGENT_CACHE_SIZE` 提高复用率
+5. **资源隔离**：为不同类型任务分配独立 Worker 组

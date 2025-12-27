@@ -1,6 +1,7 @@
 # Dify Service 详细设计文档
 
-> 版本：v1.0 | 优先级：P2 | 技术栈：Dify 1.11.x
+> 版本：v1.1 | 优先级：P2 | 更新日期：2025-01
+> 技术栈：Dify 1.11.x
 
 ## 1. 服务概述
 
@@ -52,6 +53,8 @@ mindmap
 | MCP 协议通信        | 底层向量存储 (Milvus)      |
 | 简单对话应用构建    | 复杂多智能体编排 (ai-core) |
 | 灰度发布与 A/B 测试 | 链路追踪分析 (观测服务)    |
+| 事件驱动工作流触发  | 业务规则引擎               |
+| Knowledge Pipeline  | 底层存储管理               |
 
 ### 1.4 Dify 长期保留策略
 
@@ -255,18 +258,19 @@ graph TD
 
 #### 3.1.2 节点类型详解
 
-| 节点类型 | 功能描述               | 适用场景           |
-| -------- | ---------------------- | ------------------ |
-| LLM      | 调用大语言模型         | 文本生成、对话     |
-| 知识检索 | 从知识库检索相关内容   | RAG 场景           |
-| 代码执行 | 执行 Python/JavaScript | 数据处理、逻辑计算 |
-| 条件分支 | 根据条件路由           | 业务逻辑分流       |
-| 迭代器   | 循环处理列表数据       | 批量处理           |
-| HTTP     | 调用外部 API           | 第三方服务集成     |
-| 工具     | 调用注册的工具         | 扩展能力           |
-| 变量聚合 | 合并多路输出           | 分支汇聚           |
-| 模板转换 | Jinja2 模板渲染        | 格式化输出         |
-| 问题分类 | 意图识别与分类         | 多轮对话路由       |
+| 节点类型 | 功能描述               | 适用场景              |
+| -------- | ---------------------- | --------------------- |
+| LLM      | 调用大语言模型         | 文本生成、对话        |
+| 知识检索 | 从知识库检索相关内容   | RAG 场景              |
+| 代码执行 | 执行 Python/JavaScript | 数据处理、逻辑计算    |
+| 条件分支 | 根据条件路由           | 业务逻辑分流          |
+| 迭代器   | 循环处理列表数据       | 批量处理              |
+| HTTP     | 调用外部 API           | 第三方服务集成        |
+| 工具     | 调用注册的工具         | 扩展能力              |
+| 变量聚合 | 合并多路输出           | 分支汇聚              |
+| 模板转换 | Jinja2 模板渲染        | 格式化输出            |
+| 问题分类 | 意图识别与分类         | 多轮对话路由          |
+| Trigger  | 事件驱动触发 (v1.10+)  | Webhook/定时/插件触发 |
 
 #### 3.1.3 工作流执行流程
 
@@ -304,12 +308,15 @@ flowchart TD
 
 #### 3.2.1 知识库架构
 
+> **v1.9+ 新增 Knowledge Pipeline**：支持可定制的知识处理流水线，包括模板化配置、自定义数据源、图片提取等高级功能。
+
 ```mermaid
 graph TD
     subgraph 知识库管理
         Dataset[数据集]
         Document[文档]
         Segment[分段]
+        Pipeline[Knowledge Pipeline]
     end
 
     subgraph 数据处理
@@ -317,6 +324,7 @@ graph TD
         ETLProcess[ETL 处理]
         Embedding[向量化]
         Index[索引构建]
+        ImageExtract[图片提取 v1.11+]
     end
 
     subgraph 检索配置
@@ -324,19 +332,22 @@ graph TD
         TopK[TopK 设置]
         Score[相似度阈值]
         Rerank[重排序]
+        Multimodal[多模态检索 v1.11+]
     end
 
     subgraph 存储层
         Milvus[(Milvus)]
-        PG[(PostgreSQL)]
+        PG[(PostgreSQL/MySQL)]
         S3[(对象存储)]
     end
 
     Dataset --> Document
     Document --> Segment
+    Pipeline --> Document
 
     Upload --> ETLProcess
     ETLProcess --> Embedding
+    ETLProcess --> ImageExtract
     Embedding --> Index
 
     Index --> Milvus
@@ -381,6 +392,7 @@ sequenceDiagram
 | N 选 1   | 多知识库轮询           | 领域划分场景 |
 | 多路召回 | 多知识库并行检索后融合 | 跨领域场景   |
 | 优先级   | 按知识库优先级顺序检索 | 层级知识场景 |
+| 多模态   | 图文混合检索 (v1.11+)  | 图文问答场景 |
 
 ### 3.3 Prompt 管理
 
@@ -475,10 +487,12 @@ graph TD
 
 ### 4.1 MCP 协议概述
 
+> **注意**：Dify v1.10.0 实现了 MCP specification 2025-06-18 版本。
+
 ```mermaid
 graph LR
     subgraph MCP 协议
-        Transport[传输层<br/>stdio/HTTP SSE]
+        Transport[传输层<br/>stdio/HTTP SSE/Streamable HTTP]
         Protocol[协议层<br/>JSON-RPC 2.0]
         Capability[能力层<br/>Tools/Resources/Prompts]
     end
@@ -558,7 +572,70 @@ graph TD
 
 ---
 
-## 5. 应用发布设计
+## 5. 事件驱动工作流 (Trigger) - v1.10+
+
+### 5.1 Trigger 功能概述
+
+Dify v1.10 引入了事件驱动工作流能力，允许工作流由外部事件自动触发执行，而非仅通过 API 调用。
+
+```mermaid
+graph TD
+    subgraph 触发源
+        Webhook[Webhook Trigger]
+        Schedule[Schedule Trigger]
+        Plugin[Plugin Trigger]
+    end
+
+    subgraph 工作流执行
+        Queue[任务队列]
+        Engine[图引擎执行]
+        Response[结果响应]
+    end
+
+    Webhook --> Queue
+    Schedule --> Queue
+    Plugin --> Queue
+    Queue --> Engine
+    Engine --> Response
+```
+
+### 5.2 Trigger 类型
+
+| Trigger 类型 | 描述                           | 适用场景                                |
+| ------------ | ------------------------------ | --------------------------------------- |
+| Webhook      | 接收外部 HTTP 请求触发         | 第三方系统集成、GitHub PR、Discord 消息 |
+| Schedule     | 定时触发（分钟/小时/天/周/月） | 定期报告生成、数据同步                  |
+| Plugin       | 通过插件扩展的触发器           | 自定义事件源                            |
+
+### 5.3 Trigger 配置示例
+
+```mermaid
+sequenceDiagram
+    participant Ext as 外部系统
+    participant Webhook as Webhook Endpoint
+    participant Dify as dify-service
+    participant Engine as 图引擎
+
+    Ext->>Webhook: POST /webhook/{trigger_id}
+    Webhook->>Dify: 解析请求参数
+    Dify->>Engine: 创建工作流执行任务
+    Engine->>Engine: 执行工作流
+    Engine-->>Dify: 执行结果
+    Dify-->>Ext: 返回响应 (可选)
+```
+
+### 5.4 与传统 API 调用的对比
+
+| 特性     | API 调用         | Trigger        |
+| -------- | ---------------- | -------------- |
+| 触发方式 | 主动调用         | 被动触发       |
+| 实时性   | 同步             | 异步/同步      |
+| 适用场景 | 业务系统集成     | 事件驱动自动化 |
+| 复杂度   | 需要开发集成代码 | 可视化配置     |
+
+---
+
+## 6. 应用发布设计
 
 ### 5.1 发布渠道
 
@@ -646,7 +723,7 @@ graph TD
 
 ---
 
-## 6. 数据模型设计
+## 7. 数据模型设计
 
 ### 6.1 核心实体关系
 
@@ -742,7 +819,7 @@ graph TD
 
 ---
 
-## 7. 部署架构
+## 8. 部署架构
 
 ### 7.1 部署拓扑
 
@@ -806,20 +883,23 @@ graph TD
 
 ### 7.3 环境配置
 
-| 环境变量            | 说明              | 示例值                  |
-| ------------------- | ----------------- | ----------------------- |
-| SECRET_KEY          | 应用密钥          | sk-xxx                  |
-| DB_HOST             | 数据库地址        | postgres                |
-| REDIS_HOST          | Redis 地址        | redis                   |
-| STORAGE_TYPE        | 存储类型          | s3                      |
-| VECTOR_STORE        | 向量库类型        | milvus                  |
-| MCP_SERVER_URL      | MCP 服务地址      | http://ai-core:8080/mcp |
-| LANGFUSE_ENABLED    | 是否启用 LangFuse | true                    |
-| LANGFUSE_PUBLIC_KEY | LangFuse 公钥     | pk-xxx                  |
+| 环境变量                     | 说明                | 示例值                  |
+| ---------------------------- | ------------------- | ----------------------- |
+| SECRET_KEY                   | 应用密钥            | sk-xxx                  |
+| DB_TYPE                      | 数据库类型 (v1.10+) | postgresql / mysql      |
+| DB_HOST                      | 数据库地址          | postgres                |
+| REDIS_HOST                   | Redis 地址          | redis                   |
+| STORAGE_TYPE                 | 存储类型            | s3                      |
+| VECTOR_STORE                 | 向量库类型          | milvus                  |
+| MCP_SERVER_URL               | MCP 服务地址        | http://ai-core:8080/mcp |
+| LANGFUSE_ENABLED             | 是否启用 LangFuse   | true                    |
+| LANGFUSE_PUBLIC_KEY          | LangFuse 公钥       | pk-xxx                  |
+| WORKFLOW_MAX_EXECUTION_STEPS | 最大执行步数        | 500                     |
+| WORKFLOW_MAX_EXECUTION_TIME  | 最大执行时间(秒)    | 1200                    |
 
 ---
 
-## 8. 可观测性设计
+## 9. 可观测性设计
 
 ### 8.1 监控指标
 
@@ -899,7 +979,7 @@ sequenceDiagram
 
 ---
 
-## 9. 安全设计
+## 10. 安全设计
 
 ### 9.1 安全层级
 
@@ -967,7 +1047,7 @@ graph LR
 
 ---
 
-## 10. 运维设计
+## 11. 运维设计
 
 ### 10.1 健康检查
 
@@ -1011,7 +1091,7 @@ flowchart TD
 
 ---
 
-## 11. 接口设计
+## 12. 接口设计
 
 ### 11.1 与 ai-core-service 的 MCP 接口
 
@@ -1039,7 +1119,7 @@ flowchart TD
 
 ---
 
-## 12. 开发里程碑
+## 13. 开发里程碑
 
 ### 12.1 阶段规划
 
@@ -1061,28 +1141,25 @@ flowchart TD
 
 ---
 
-## 13. 附录
+## 14. 附录
 
-### 13.1 相关文档
+### 14.1 相关文档
 
 - [后端开发计划](../backend-development-plan.md)
 - [ai-core-service 设计](03-ai-core-service-design.md)
 - [etl-service 设计](05-etl-service-design.md)
 - [Dify 官方文档](https://docs.dify.ai/)
+- [Dify GitHub Releases](https://github.com/langgenius/dify/releases)
 - [MCP 协议规范](https://modelcontextprotocol.io/)
 
-### 13.2 术语表
+### 14.2 术语表
 
-| 术语     | 说明                                   |
-| -------- | -------------------------------------- |
-| MCP      | Model Context Protocol，模型上下文协议 |
-| 工作流   | Workflow，可视化编排的执行流程         |
-| 知识库   | Dataset，用于 RAG 检索的文档集合       |
-| 应用     | App，基于工作流的可发布 AI 应用        |
-| 灰度发布 | Canary Release，渐进式发布策略         |
-
-### 13.3 版本历史
-
-| 版本 | 日期       | 作者 | 变更说明 |
-| ---- | ---------- | ---- | -------- |
-| v1.0 | 2025-01-01 | -    | 初始版本 |
+| 术语               | 说明                                   |
+| ------------------ | -------------------------------------- |
+| MCP                | Model Context Protocol，模型上下文协议 |
+| 工作流             | Workflow，可视化编排的执行流程         |
+| 知识库             | Dataset，用于 RAG 检索的文档集合       |
+| 应用               | App，基于工作流的可发布 AI 应用        |
+| 灰度发布           | Canary Release，渐进式发布策略         |
+| Trigger            | 事件触发器，支持 Webhook/定时/插件触发 |
+| Knowledge Pipeline | 知识处理流水线，可定制文档处理流程     |

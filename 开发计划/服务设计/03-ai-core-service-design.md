@@ -1,6 +1,7 @@
 # AI Core Service 详细设计文档
 
-> 版本：v1.0 | 优先级：P0 | 技术栈：Spring Boot 3.x + Spring AI Alibaba 1.1.x
+> 版本：v1.1 | 优先级：P0 | 更新日期：2025-12-27
+> 技术栈：Spring Boot 3.4.x + Spring AI Alibaba 1.1.0
 
 ## 1. 服务概述
 
@@ -157,6 +158,8 @@ graph TB
 
 ### 2.3 核心组件关系
 
+> Spring AI Alibaba 1.1 的三层架构：Augmented LLM → Graph → Agent Framework
+
 ```mermaid
 graph LR
     subgraph ChatClient 生态
@@ -178,6 +181,13 @@ graph LR
         BuiltinTools[内置工具]
         CustomTools[自定义工具]
         ExternalTools[外部服务工具]
+    end
+
+    subgraph 上下文工程 Context Engineering
+        HumanLoop[Human In The Loop]
+        ContextCompress[上下文压缩]
+        DynamicTools[动态工具选择]
+        Planning[规划与反思]
     end
 
     ChatClient --> Prompt
@@ -289,6 +299,8 @@ graph TD
 
 #### 3.2.1 Agent 类型分类
 
+> 基于 Spring AI Alibaba 1.1 Graph 和 Agent Framework 实现
+
 ```mermaid
 graph TD
     subgraph Agent 类型
@@ -310,9 +322,11 @@ graph TD
     end
 
     subgraph 多智能体
-        Supervisor[Supervisor 模式]
-        Hierarchical[层级模式]
-        Collaborative[协作模式]
+        Sequential[SequentialAgent<br/>顺序执行]
+        Parallel[ParallelAgent<br/>并行执行]
+        Routing[RoutingAgent<br/>条件路由]
+        LoopAgent[LoopAgent<br/>循环执行]
+        Supervisor[SupervisorAgent<br/>任务分发]
     end
 
     Simple --> OneShot
@@ -386,7 +400,21 @@ graph TD
     Aggregator --> User
 ```
 
-#### 3.2.4 Agent 状态机
+#### 3.2.4 上下文工程 (Context Engineering)
+
+> Spring AI Alibaba 1.1 内置的最佳实践，用于优化 Agent 的上下文管理和交互质量。
+
+| 能力              | 说明                                       | 实现方式                  |
+| ----------------- | ------------------------------------------ | ------------------------- |
+| Human In The Loop | 关键决策节点引入人工确认                   | Graph 中断点 + 回调机制   |
+| 上下文压缩        | 自动压缩过长的对话历史                     | 摘要 Advisor + Token 截断 |
+| 上下文编辑        | 运行时动态修改对话上下文                   | Memory 接口方法           |
+| 模型调用限制      | 限制单次任务的最大 LLM 调用次数            | max-iterations 配置       |
+| 工具重试          | 工具调用失败后的自动重试                   | RetryPolicy + 指数退避    |
+| 动态工具选择      | 根据上下文动态筛选可用工具                 | ToolSelector 策略         |
+| 规划与反思        | Agent 在执行前进行任务规划，执行后进行反思 | Planning Advisor          |
+
+#### 3.2.5 Agent 状态机
 
 ```mermaid
 stateDiagram-v2
@@ -703,6 +731,7 @@ graph LR
 | rag-service       | gRPC               | 向量检索、多路召回               | 10s      | 1 次重试 |
 | data-service      | REST               | 用户数据、会话历史、知识库元数据 | 5s       | 2 次重试 |
 | dify-service      | MCP (被调用)       | 响应 Dify 的工具调用请求         | 30s      | 无重试   |
+| 其他 ai-core 实例 | A2A (via Nacos)    | 分布式智能体间协作通信           | 60s      | 1 次重试 |
 
 ### 5.3 gRPC 客户端配置
 
@@ -968,22 +997,24 @@ graph TD
 
 ### 9.2 核心配置项
 
-| 配置分类 | 配置项                  | 说明           |
-| -------- | ----------------------- | -------------- |
-| 推理服务 | inference.base-url      | 推理服务地址   |
-| 推理服务 | inference.default-model | 默认模型       |
-| 推理服务 | inference.timeout       | 推理超时时间   |
-| RAG 服务 | rag.grpc-address        | gRPC 服务地址  |
-| RAG 服务 | rag.default-top-k       | 默认检索数量   |
-| Redis    | redis.host              | Redis 主机地址 |
-| Redis    | redis.port              | Redis 端口     |
-| Redis    | redis.password          | Redis 密码     |
-| Redis    | redis.session-ttl       | 会话缓存 TTL   |
-| Agent    | agent.max-iterations    | 最大迭代次数   |
-| Agent    | agent.tool-timeout      | 工具执行超时   |
-| MCP      | mcp.server.port         | MCP 服务端口   |
-| 可观测   | otel.exporter.endpoint  | OTLP 导出端点  |
-| 安全     | security.rate-limit     | 限流阈值       |
+| 配置分类 | 配置项                  | 说明              |
+| -------- | ----------------------- | ----------------- |
+| 推理服务 | inference.base-url      | 推理服务地址      |
+| 推理服务 | inference.default-model | 默认模型          |
+| 推理服务 | inference.timeout       | 推理超时时间      |
+| RAG 服务 | rag.grpc-address        | gRPC 服务地址     |
+| RAG 服务 | rag.default-top-k       | 默认检索数量      |
+| Redis    | redis.host              | Redis 主机地址    |
+| Redis    | redis.port              | Redis 端口        |
+| Redis    | redis.password          | Redis 密码        |
+| Redis    | redis.session-ttl       | 会话缓存 TTL      |
+| Agent    | agent.max-iterations    | 最大迭代次数      |
+| Agent    | agent.tool-timeout      | 工具执行超时      |
+| MCP      | mcp.server.port         | MCP 服务端口      |
+| 可观测   | otel.exporter.endpoint  | OTLP 导出端点     |
+| 安全     | security.rate-limit     | 限流阈值          |
+| A2A      | a2a.enabled             | 是否启用 A2A 通信 |
+| A2A      | a2a.nacos.server-addr   | Nacos 服务地址    |
 
 ### 9.3 动态配置
 
@@ -1204,6 +1235,46 @@ graph TD
 | ChatModel   | 实现 ChatModel 接口   | 接入新的模型提供商  |
 | Memory      | 实现 ChatMemory 接口  | 自定义记忆存储      |
 | VectorStore | 实现 VectorStore 接口 | 接入新的向量数据库  |
+| Graph Node  | 实现自定义节点        | 扩展工作流能力      |
+
+### 13.3 Admin 可视化平台集成
+
+> Spring AI Alibaba Admin 是一站式 Agent 管理平台，支持与 Dify 等低代码平台集成。
+
+```mermaid
+graph TD
+    subgraph Admin 平台能力
+        Visual[可视化 Agent 开发]
+        Observe[可观测性仪表盘]
+        Eval[Agent 评估]
+        MCPMgmt[MCP 管理]
+    end
+
+    subgraph 集成能力
+        DifyImport[Dify DSL 导入]
+        DifyExport[导出为 Dify 工作流]
+        PromptSync[Prompt 版本同步]
+    end
+
+    subgraph 运维能力
+        Monitor[运行监控]
+        Debug[在线调试]
+        ABTest[A/B 测试]
+    end
+
+    Visual --> DifyImport
+    Observe --> Monitor
+    Eval --> ABTest
+    MCPMgmt --> PromptSync
+```
+
+| 功能       | 说明                                |
+| ---------- | ----------------------------------- |
+| 可视化开发 | 图形化编排 Agent 工作流             |
+| Dify 集成  | 导入 Dify DSL，快速迁移原型到生产   |
+| 可观测性   | 实时查看 Agent 执行链路、Token 消耗 |
+| 评估系统   | 基于数据集的 Agent 质量评估         |
+| MCP 管理   | 统一管理 MCP Server 和工具注册      |
 
 ---
 
@@ -1212,5 +1283,6 @@ graph TD
 - [后端开发计划总览](../backend-development-plan.md)
 - [Data Service 设计](./01-data-service-design.md)
 - [Inference Service 设计](./02-inference-service-design.md)
-- [Spring AI Alibaba 指南](../../技术选型/dify-spring-ai-alibaba-guide.md)
+- [RAG Service 设计](./04-rag-service-design.md)
+- [Dify & Spring AI Alibaba 指南](../../技术选型/dify-spring-ai-alibaba-guide.md)
 - [LangFuse & Promptfoo 指南](../../技术选型/langfuse-promptfoo-guide.md)

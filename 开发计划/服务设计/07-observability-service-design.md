@@ -1,6 +1,7 @@
 # Observability Service 详细设计文档
 
-> 版本：v1.0 | 优先级：P1 | 技术栈：LangFuse 1.0.x + Promptfoo
+> 版本：v1.1 | 优先级：P1 | 更新日期：2025-12-27
+> 技术栈：LangFuse 3.x + Promptfoo 0.120.x
 
 ## 1. 服务概述
 
@@ -328,6 +329,21 @@ graph LR
 | REST API       | 任意语言       | 灵活但需自行封装     |
 | LangChain 回调 | LangChain 项目 | 开箱即用，自动采集   |
 
+### 3.6 LangFuse v3 新特性
+
+LangFuse v3 引入了多项重要更新：
+
+| 特性                 | 说明                              | 适用场景        |
+| -------------------- | --------------------------------- | --------------- |
+| Agent Graphs         | 可视化 Agent 调用图               | 复杂 Agent 调试 |
+| Multi-Modality       | 支持图片、音频等多模态追踪        | 多模态 AI 应用  |
+| Dataset Versioning   | 数据集版本控制                    | 测试数据管理    |
+| Metrics API v2       | 基于 events table 的高性能指标    | 大规模监控      |
+| Batch Export         | 批量导出到 Blob Storage（S3/GCS） | 数据归档分析    |
+| LLM Connections      | 统一管理 LLM 连接配置             | 多模型管理      |
+| Prompt Composability | Prompt 组合与引用                 | Prompt 复用     |
+| MCP Server           | Model Context Protocol 支持       | 工具集成        |
+
 ---
 
 ## 4. Token 统计与成本分析
@@ -375,13 +391,18 @@ $$
 
 ### 4.3 模型定价配置
 
-| 模型                 | 输入价格 ($/1M) | 输出价格 ($/1M) | 备注      |
-| -------------------- | --------------- | --------------- | --------- |
-| gpt-4o               | 2.50            | 10.00           | OpenAI    |
-| gpt-4o-mini          | 0.15            | 0.60            | OpenAI    |
-| claude-3.5-sonnet    | 3.00            | 15.00           | Anthropic |
-| qwen2.5-72b-instruct | 自建成本        | 自建成本        | 本地部署  |
-| deepseek-r1          | 自建成本        | 自建成本        | 本地部署  |
+| 模型                   | 输入价格 ($/1M) | 输出价格 ($/1M) | 备注           |
+| ---------------------- | --------------- | --------------- | -------------- |
+| gpt-4o                 | 2.50            | 10.00           | OpenAI         |
+| gpt-4o-mini            | 0.15            | 0.60            | OpenAI         |
+| gpt-5.2                | 待定            | 待定            | OpenAI 最新    |
+| claude-3.5-sonnet      | 3.00            | 15.00           | Anthropic      |
+| claude-opus-4.5        | 15.00           | 75.00           | Anthropic 最新 |
+| gemini-3-flash-preview | 待定            | 待定            | Google 最新    |
+| qwen2.5-72b-instruct   | 自建成本        | 自建成本        | 本地部署       |
+| deepseek-r1            | 自建成本        | 自建成本        | 本地部署       |
+
+> **注意**：模型定价经常变动，建议通过 LangFuse 的模型定价配置功能进行管理，支持定价层级（Pricing Tiers）自动匹配。
 
 ### 4.4 成本分析维度
 
@@ -465,6 +486,8 @@ mindmap
 ```
 
 ### 5.2 测试配置结构
+
+> **Promptfoo v0.120+ 新特性**：支持 Red Team 自动化安全测试、OpenTelemetry 追踪集成、VS Code 扩展、OWASP Agentic AI T1-T15 威胁映射、多模态攻击测试、浏览器自动化测试等。
 
 ```mermaid
 graph TD
@@ -600,6 +623,53 @@ flowchart TD
     Decide --> Report
     Fail --> Notify
 ```
+
+### 5.6 Red Team 安全测试（Promptfoo v0.120+）
+
+Promptfoo 新增的 Red Team 功能提供自动化 AI 安全测试能力：
+
+```mermaid
+graph TD
+    subgraph Red Team 测试类型
+        Injection[Prompt 注入]
+        Jailbreak[越狱攻击]
+        PII[PII 泄露]
+        Hallucination[幻觉诱导]
+        Toxicity[毒性输出]
+        OWASP[OWASP LLM Top 10]
+    end
+
+    subgraph 攻击策略
+        MultiLayer[多层策略]
+        Agentic[Agent 攻击]
+        MultiModal[多模态攻击]
+        Citation[引用攻击]
+    end
+
+    subgraph 报告输出
+        RiskReport[风险报告]
+        VulnList[漏洞清单]
+        Remediation[修复建议]
+    end
+
+    Injection --> RiskReport
+    Jailbreak --> RiskReport
+    OWASP --> VulnList
+    VulnList --> Remediation
+```
+
+| 安全测试类别              | 说明             | OWASP 映射 |
+| ------------------------- | ---------------- | ---------- |
+| Prompt Injection          | 提示注入攻击检测 | LLM01      |
+| Insecure Output           | 不安全输出处理   | LLM02      |
+| Training Data Poisoning   | 训练数据污染     | LLM03      |
+| Denial of Service         | 资源耗尽攻击     | LLM04      |
+| Supply Chain              | 供应链漏洞       | LLM05      |
+| Sensitive Info Disclosure | 敏感信息泄露     | LLM06      |
+| Insecure Plugin Design    | 插件安全         | LLM07      |
+| Excessive Agency          | 过度授权         | LLM08      |
+| Overreliance              | 过度依赖         | LLM09      |
+| Model Theft               | 模型窃取         | LLM10      |
 
 ---
 
@@ -895,12 +965,12 @@ graph TD
 
 | 服务            | 镜像                         | 资源配置 | 副本数 |
 | --------------- | ---------------------------- | -------- | ------ |
-| langfuse-web    | langfuse/langfuse:2.x        | 2C4G     | 2      |
-| langfuse-worker | langfuse/langfuse:2.x        | 2C4G     | 2      |
+| langfuse-web    | langfuse/langfuse:3.x        | 2C4G     | 2      |
+| langfuse-worker | langfuse/langfuse:3.x        | 2C4G     | 2      |
 | otel-collector  | otel/opentelemetry-collector | 1C2G     | 2      |
-| promptfoo       | promptfoo/promptfoo          | 1C2G     | 1      |
+| promptfoo       | promptfoo/promptfoo:0.120.x  | 1C2G     | 1      |
 | redis           | redis:7                      | 1C2G     | 1      |
-| clickhouse      | clickhouse/clickhouse        | 4C8G     | 1      |
+| clickhouse      | clickhouse/clickhouse-server | 4C8G     | 1      |
 
 ### 9.3 环境配置
 
@@ -1042,22 +1112,23 @@ graph TD
 - [后端开发计划](../backend-development-plan.md)
 - [ai-core-service 设计](03-ai-core-service-design.md)
 - [LangFuse 官方文档](https://langfuse.com/docs)
+- [LangFuse GitHub Releases](https://github.com/langfuse/langfuse/releases)
 - [Promptfoo 官方文档](https://promptfoo.dev/docs/intro)
+- [Promptfoo Red Team 文档](https://promptfoo.dev/docs/red-team/)
 - [OpenTelemetry 文档](https://opentelemetry.io/docs/)
+- [OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 
 ### 13.2 术语表
 
-| 术语       | 说明                                 |
-| ---------- | ------------------------------------ |
-| Trace      | 一次完整请求的追踪记录               |
-| Span       | 追踪中的一个操作步骤                 |
-| Generation | 一次 LLM 调用的记录                  |
-| OTLP       | OpenTelemetry Protocol，标准遥测协议 |
-| Promptfoo  | Prompt 测试与评估工具                |
-| LangFuse   | LLM 可观测性平台                     |
-
-### 13.3 版本历史
-
-| 版本 | 日期       | 作者 | 变更说明 |
-| ---- | ---------- | ---- | -------- |
-| v1.0 | 2025-01-01 | -    | 初始版本 |
+| 术语         | 说明                                   |
+| ------------ | -------------------------------------- |
+| Trace        | 一次完整请求的追踪记录                 |
+| Span         | 追踪中的一个操作步骤                   |
+| Generation   | 一次 LLM 调用的记录                    |
+| OTLP         | OpenTelemetry Protocol，标准遥测协议   |
+| Promptfoo    | Prompt 测试与评估工具                  |
+| LangFuse     | LLM 可观测性平台                       |
+| Red Team     | AI 安全红队测试，自动化发现漏洞        |
+| Agent Graph  | Agent 调用链图可视化                   |
+| MCP          | Model Context Protocol，模型上下文协议 |
+| Pricing Tier | 模型定价层级，用于成本核算             |
