@@ -20,6 +20,11 @@ interface MarkdownRendererProps {
   content: string
   streaming?: boolean
   streamingSpeed?: number // 每次添加的字符数
+  enableAnimation?: boolean // 启用文本淡入动画
+  animationConfig?: {
+    fadeDuration?: number // 淡入动画持续时间（毫秒）
+    easing?: string // 动画缓动函数
+  }
 }
 
 // 自定义代码组件，用于处理 mermaid 图表和代码高亮
@@ -311,7 +316,12 @@ SupComponent.displayName = 'SupComponent'
 export function MarkdownRenderer({ 
   content, 
   streaming = true,
-  streamingSpeed = 20 
+  streamingSpeed = 20,
+  enableAnimation = true,
+  animationConfig = {
+    fadeDuration: 200,
+    easing: 'ease-in-out'
+  }
 }: MarkdownRendererProps) {
   const [displayContent, setDisplayContent] = useState('')
   const [isStreaming, setIsStreaming] = useState(streaming)
@@ -373,7 +383,11 @@ export function MarkdownRenderer({
           'custom-scatter': CustomScatter,
         }}
         paragraphTag="div"
-        streaming={{ hasNextChunk: isStreaming }}
+        streaming={{ 
+          hasNextChunk: isStreaming,
+          enableAnimation: enableAnimation,
+          animationConfig: animationConfig
+        }}
       >
         {displayContent}
       </XMarkdown>
