@@ -1028,4 +1028,8 @@ body {
   .toc-aside {
     display: none !important;
   }
+
+  .app-content {
+    margin-right: 0 !important;
+  }
 }

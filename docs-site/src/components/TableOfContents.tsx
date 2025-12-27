@@ -92,6 +92,7 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
   const { theme } = useTheme()
   const [tocItems, setTocItems] = useState<TocItem[]>([])
   const [visible, setVisible] = useState(false)
+  const [container, setContainer] = useState<HTMLElement | Window | null>(null)
 
   const updateToc = useCallback(() => {
     // 延迟执行以确保 DOM 已经渲染完成
@@ -101,6 +102,14 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
       setTocItems(tree)
       setVisible(headings.length > 0)
     }, 500)
+  }, [])
+
+  useEffect(() => {
+    // 获取滚动容器
+    const contentContainer = document.querySelector('.app-content') as HTMLElement
+    if (contentContainer) {
+      setContainer(contentContainer)
+    }
   }, [])
 
   useEffect(() => {
@@ -130,13 +139,16 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
 
   const anchorItems = toAnchorItems(tocItems)
 
+  // 获取内容滚动容器
+  const getContainer = () => {
+    return container || document.querySelector('.app-content') as HTMLElement || globalThis
+  }
+
   return (
     <div 
       className={`toc-container ${className || ''}`}
       style={{
-        position: 'sticky',
-        top: 24,
-        maxHeight: 'calc(100vh - var(--header-height, 64px) - 48px)',
+        height: '100%',
         overflow: 'auto',
         padding: '16px',
         background: theme === 'light' 
@@ -168,7 +180,8 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
       </Title>
       <Anchor
         affix={false}
-        offsetTop={80}
+        getContainer={getContainer}
+        targetOffset={100}
         items={anchorItems}
         style={{
           background: 'transparent',

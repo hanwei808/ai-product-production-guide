@@ -112,28 +112,29 @@ export function AppLayout({ children }: AppLayoutProps) {
             className="app-content"
             style={{
               marginLeft: collapsed ? 80 : 280,
+              marginRight: 240,
               padding: '24px 48px',
               height: '100%',
               overflow: 'auto',
               background: 'transparent',
-              transition: 'margin-left 0.2s',
-              display: 'flex',
-              gap: '24px',
+              transition: 'margin-left 0.2s, margin-right 0.2s',
             }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {children}
-            </div>
-            <aside 
-              className="toc-aside"
-              style={{
-                width: 220,
-                flexShrink: 0,
-              }}
-            >
-              <TableOfContents />
-            </aside>
+            {children}
           </Content>
+          <aside 
+            className="toc-aside"
+            style={{
+              width: 220,
+              position: 'fixed',
+              right: 20,
+              top: 'calc(var(--header-height, 64px) + 24px)',
+              height: 'calc(100vh - var(--header-height, 64px) - 48px)',
+              overflow: 'auto',
+            }}
+          >
+            <TableOfContents />
+          </aside>
         </Layout>
       </Layout>
     </ConfigProvider>
