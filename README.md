@@ -7,9 +7,11 @@
 ```mermaid
 graph TD
     subgraph "开发环境"
-        Dev[VS Code / Cursor]
+        VSCode[VS Code]
         Copilot[GitHub Copilot]
-        Dev -.->|Agent 模式 / MCP| Copilot
+        Cursor[Cursor]
+        VSCode -.->|Agent 模式 / MCP| Copilot
+        Cursor -.->|内置 AI / MCP| 多模型切换
     end
 
     subgraph "前端交互层"
@@ -31,9 +33,12 @@ graph TD
     subgraph "数据处理层 (ETL)"
         Raw[原始文档]
         Unstructured["Unstructured.io<br/>(64+ 格式 / VLM)"]
+        LangChain["LangChain<br/>(高级 RAG / 多路召回)"]
         Chunks[语义切片]
         Raw --> Unstructured
-        Unstructured --> Chunks
+        Unstructured --> LangChain
+        LangChain --> Chunks
+        Spring -->|gRPC| LangChain
     end
 
     subgraph "存储层"
@@ -79,13 +84,13 @@ graph TD
 ### 1. 开发环境与协同 (IDE)
 
 - **工具**: [VS Code](https://code.visualstudio.com/) v1.107.x + [GitHub Copilot](https://github.com/features/copilot) v1.107.x, [Cursor](https://cursor.sh/) v2.1.x
-- **定位**: 高效的 AI 辅助编程环境。前端推荐 VS Code，后端推荐 Cursor。
-- **优势**: VS Code 生态丰富，支持 Copilot Chat、Inline Chat 及 Agent 模式与 MCP 服务器扩展；Cursor 深度集成 AI，提供代码库嵌入与 Bugbot 代码审查能力，支持 GPT-5.x / Claude 4.5 / Gemini 3 等多模型切换。
+- **定位**: 高效的 AI 辅助编程环境。前端推荐 VS Code + Copilot，后端推荐 Cursor。
+- **优势**: VS Code 生态丰富，通过 GitHub Copilot 插件支持 Copilot Chat、Inline Chat 及 Agent 模式与 MCP 服务器扩展；Cursor 内置 AI 能力（无需 Copilot），提供代码库嵌入与 Bugbot 代码审查能力，支持 GPT-5.x / Claude 4.5 / Gemini 3 等多模型切换。
 - 👉 [VS Code Copilot & Cursor：前后端高效开发协同指南](vscode-copilot-cursor-guide.md)
 
 ```mermaid
 graph TD
-    subgraph Frontend_Zone [前端开发: VS Code + Copilot]
+    subgraph Frontend_Zone [前端: VS Code + Copilot]
         direction TB
         F1[UI 组件生成]
         F2[交互逻辑编写]
@@ -94,7 +99,7 @@ graph TD
         F5[MCP 服务器扩展]
     end
 
-    subgraph Backend_Zone [后端开发: Cursor]
+    subgraph Backend_Zone [后端: Cursor 内置 AI]
         direction TB
         B1[API 接口定义]
         B2[核心业务逻辑]
@@ -103,9 +108,6 @@ graph TD
         B5[Bugbot 代码审查]
     end
 
-    subgraph Models [多模型支持]
-        M1[GPT-5.x / Claude 4.5 / Gemini 3]
-    end
 
     subgraph Integration [协同联调]
         API{API 契约 / Swagger}
@@ -113,8 +115,6 @@ graph TD
 
     Frontend_Zone -->|API 调用| API
     Backend_Zone -->|接口实现| API
-    Models -.->|模型切换| Frontend_Zone
-    Models -.->|模型切换| Backend_Zone
 ```
 
 ### 2. 前端交互层 (Frontend)
@@ -155,10 +155,19 @@ graph TD
 
 ### 3. 应用编排与后端 (Backend)
 
-- **工具**: [Dify](https://dify.ai/) v1.11.x, [Spring AI Alibaba](https://github.com/alibaba/spring-ai-alibaba) v1.1.x
-- **定位**: Dify 负责可视化工作流编排与 RAG 引擎，Spring AI Alibaba 负责 Agent 智能体框架与多智能体编排。
-- **优势**: Dify 降低了 AI 应用编排门槛，快速验证想法；Spring AI Alibaba 提供了 Agent Framework、多智能体编排能力，支持 MCP 协议，无缝对接阿里云通义大模型等国产算力。
+- **工具**: [Dify](https://dify.ai/) v1.11.x, [Spring AI Alibaba](https://github.com/alibaba/spring-ai-alibaba) v1.1.x, [LangChain](https://python.langchain.com/) v1.x
+- **定位**: Dify 负责可视化工作流编排与 RAG 引擎，Spring AI Alibaba 负责 Agent 智能体框架与多智能体编排，LangChain 作为数据处理微服务提供高级 RAG 能力。
+- **优势**: Dify 降低了 AI 应用编排门槛，快速验证想法；Spring AI Alibaba 提供了 Agent Framework、多智能体编排能力，支持 MCP 协议，无缝对接阿里云通义大模型等国产算力；LangChain 提供 100+ 文档格式支持与多路召回、重排序等高级 RAG 能力。
 - 👉 [Dify & Spring AI Alibaba：构建下一代 AI 应用的双重利器](dify-spring-ai-alibaba-guide.md)
+- 👉 [Spring AI vs LangChain：Java 与 Python AI 框架全面对比](spring-ai-langchain-guide.md)
+
+#### 三者协作架构与职责分工
+
+| 层级       | 技术              | 职责                                                   | 适用场景             |
+| ---------- | ----------------- | ------------------------------------------------------ | -------------------- |
+| **编排层** | Dify              | 可视化工作流、知识库管理、Prompt 灰度发布              | 快速验证、低代码编排 |
+| **业务层** | Spring AI Alibaba | Agent 逻辑、多智能体、事务处理、企业集成               | 复杂业务、企业级应用 |
+| **数据层** | LangChain         | 复杂文档处理、高级 RAG（多路召回/重排序）、AI 算法实验 | 数据 ETL、算法探索   |
 
 ```mermaid
 graph TD
@@ -179,6 +188,12 @@ graph TD
         DataAccess[数据库/API]
     end
 
+    subgraph Data_Layer [LangChain: 数据处理层]
+        LC_ETL[高级 ETL<br/>100+ 格式支持]
+        LC_RAG[复杂 RAG<br/>多路召回/重排序]
+        LC_Exp[实验功能<br/>新模型评估]
+    end
+
     subgraph Admin_Layer [管理与可观测层]
         Admin[Admin 可视化平台]
     end
@@ -194,6 +209,8 @@ graph TD
     SpringAgent --> MultiAgent
     MultiAgent --> BizLogic
     BizLogic --> DataAccess
+    SpringAgent -->|gRPC| LC_RAG
+    RAG -.->|复杂场景| LC_RAG
     DifyApp -.-> LLM
     SpringAgent -.-> LLM
     Admin -.->|集成/迁移| DifyApp
@@ -203,7 +220,10 @@ graph TD
     style Workflow fill:#e3f2fd,stroke:#1565c0
     style SpringAgent fill:#e8f5e9,stroke:#2e7d32
     style MultiAgent fill:#e8f5e9,stroke:#2e7d32
-    style LLM fill:#fff3e0,stroke:#ef6c00
+    style LC_ETL fill:#fff3e0,stroke:#ef6c00
+    style LC_RAG fill:#fff3e0,stroke:#ef6c00
+    style LC_Exp fill:#fff3e0,stroke:#ef6c00
+    style LLM fill:#fce4ec,stroke:#c2185b
     style Admin fill:#f3e5f5,stroke:#7b1fa2
 ```
 
@@ -339,15 +359,17 @@ flowchart TD
         Dev((开发者)) --> VSCode[VS Code<br/>前端开发]
         Dev --> Cursor[Cursor<br/>后端开发]
         VSCode --> Copilot[GitHub Copilot]
-        Cursor --> Copilot
+        Cursor --> CursorAI[内置 AI]
         Copilot --> Code[代码生成]
+        CursorAI --> Code
         Code --> Promptfoo[Promptfoo<br/>Prompt 单元测试]
     end
 
     subgraph Phase2["2️⃣ 数据处理链路"]
-        RawDocs[原始文档] --> Unstructured[Unstructured.io<br/>清洗与切片]
-        Unstructured --> VectorData[向量数据]
-        Unstructured --> MetaData[业务元数据]
+        RawDocs[原始文档] --> Unstructured[Unstructured.io<br/>清洗与分区]
+        Unstructured --> LangChain[LangChain<br/>高级切片/增强]
+        LangChain --> VectorData[向量数据]
+        LangChain --> MetaData[业务元数据]
         VectorData --> Milvus[(Milvus)]
         MetaData --> PostgreSQL[(PostgreSQL)]
     end
@@ -355,11 +377,13 @@ flowchart TD
     subgraph Phase3["3️⃣ 应用运行交互"]
         User((用户)) --> Frontend[Next.js +<br/>Ant Design X]
         Frontend --> Backend{编排层}
-        Backend --> Spring[Spring AI Alibaba]
         Backend --> Dify[Dify]
-        Spring --> RAG[RAG 检索]
-        Dify --> RAG
-        RAG --> Milvus
+        Backend --> Spring[Spring AI Alibaba]
+        Dify <-->|API/MCP| Spring
+        Spring --> RAG{RAG 检索}
+        RAG -->|简单场景| Milvus
+        RAG -->|复杂场景| LangChain_RAG[LangChain<br/>多路召回/重排序]
+        LangChain_RAG --> Milvus
         Spring --> Inference{推理服务}
         Inference -->|生产| vLLM[vLLM]
         Inference -->|开发| Ollama[Ollama]
@@ -386,23 +410,28 @@ flowchart TD
     style Phase3 fill:#e8f5e9,stroke:#2e7d32
     style Phase4 fill:#f3e5f5,stroke:#7b1fa2
     style Phase5 fill:#fce4ec,stroke:#c2185b
+    style LangChain fill:#fff3e0,stroke:#ef6c00
+    style LangChain_RAG fill:#fff3e0,stroke:#ef6c00
 ```
 
 1. **开发与迭代**:
 
-   - 开发者使用 **VS Code** (前端) 和 **Cursor** (后端) 编写代码，**GitHub Copilot** 辅助生成。
+   - 开发者使用 **VS Code + GitHub Copilot** (前端) 和 **Cursor** (后端，内置 AI 能力) 编写代码。
    - **Promptfoo** 用于在开发阶段对 Prompt 进行单元测试，确保变更不破坏现有逻辑。
 
 2. **数据处理链路**:
 
-   - 原始文档通过 **Unstructured.io** 进行清洗和切片 (ETL)。
+   - 原始文档通过 **Unstructured.io** 进行清洗和分区。
+   - **LangChain** 作为 Python 微服务，提供高级语义切片、多路召回、重排序等能力。
    - 处理后的向量数据存入 **Milvus**，业务元数据存入 **PostgreSQL**。
 
 3. **应用运行交互**:
 
    - 用户在 **Next.js** + **Ant Design X** 构建的前端界面发起对话。
-   - 请求转发至 **Spring AI Alibaba** 或 **Dify** 进行编排。
-   - 后端调用 **Milvus** 进行 RAG 检索，并请求 **vLLM** (生产) 或 **Ollama** (开发) 进行推理。
+   - 请求转发至 **Dify** (编排层) 或 **Spring AI Alibaba** (业务层) 进行处理。
+   - **Dify** 与 **Spring AI Alibaba** 通过 API/MCP 协议双向通信，协同完成复杂任务。
+   - 简单 RAG 场景直接调用 **Milvus**，复杂场景通过 **LangChain** 进行多路召回与重排序。
+   - 推理请求发往 **vLLM** (生产) 或 **Ollama** (开发)。
 
 4. **监控与优化**:
 
@@ -410,4 +439,4 @@ flowchart TD
    - 基于 LangFuse 的反馈数据，开发者优化 Prompt 和代码，形成闭环。
 
 5. **部署交付**:
-   - 所有服务通过 **Docker** 容器化，最终由 **Kubernetes** 统一编排调度，保障高可用。
+   - 所有服务（包括 LangChain Python 微服务）通过 **Docker** 容器化，最终由 **Kubernetes** 统一编排调度，保障高可用。
