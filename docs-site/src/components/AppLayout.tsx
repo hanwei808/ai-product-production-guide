@@ -111,7 +111,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               padding: '24px 48px',
               height: '100%',
               overflow: 'auto',
-              background: 'var(--color-bg-base)',
+              background: 'transparent',
               transition: 'margin-left 0.2s',
             }}
           >

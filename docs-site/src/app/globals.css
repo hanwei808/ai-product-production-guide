@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+/* 覆盖 Ant Design Layout 默认背景 */
+.ant-layout {
+  background: transparent !important;
+}
+
 /* ========================================
    主题配置 - 渐变色系统
    ======================================== */
@@ -147,7 +152,26 @@ body {
     'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   color: var(--color-text-primary);
-  background-color: var(--color-bg-base);
+  background: linear-gradient(
+    135deg,
+    #ffecd2 0%,
+    #fcb69f 25%,
+    #a1c4fd 50%,
+    #c2e9fb 75%,
+    #d4fc79 100%
+  );
+  background-attachment: fixed;
+}
+
+[data-theme='dark'] body {
+  background: linear-gradient(
+    135deg,
+    #0f0c29 0%,
+    #302b63 25%,
+    #24243e 50%,
+    #1a1a2e 75%,
+    #16213e 100%
+  );
 }
 
 /* Markdown 内容样式 */
