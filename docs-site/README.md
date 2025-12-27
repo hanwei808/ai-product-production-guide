@@ -100,5 +100,40 @@ docs-site/
 ## 添加新文档
 
 1. 在项目根目录下的 `技术选型/` 或 `开发计划/` 文件夹中添加 `.md` 文件
-2. 更新 `src/components/Sidebar.tsx` 中的菜单配置
-3. 重新构建：`npm run build`
+2. 重新启动开发服务器或构建：`npm run dev` 或 `npm run build`
+
+> 💡 **自动扫描**：文档结构会在每次启动/构建时自动从根目录扫描生成，无需手动配置菜单。
+
+## 文档结构自动生成
+
+本项目使用构建时脚本自动扫描根目录下的 Markdown 文件，生成侧边栏菜单结构。
+
+### 工作原理
+
+1. **构建脚本** `scripts/generate-docs-structure.js` 在每次 `npm run dev` 或 `npm run build` 前自动执行
+2. 脚本扫描根目录下所有 `.md` 文件（排除 `README.md`、`docs-site/`、`node_modules/` 等）
+3. 生成 `src/lib/docs-structure.json` 配置文件
+4. `Sidebar.tsx` 组件从 JSON 文件导入菜单结构
+
+### 相关命令
+
+```bash
+# 手动生成文档结构
+npm run generate-docs
+
+# 开发模式（自动生成文档结构后启动）
+npm run dev
+
+# 构建（自动生成文档结构后构建）
+npm run build
+```
+
+### 自定义文档标题
+
+文档标题按以下优先级确定：
+
+1. 脚本中 `labelMap` 定义的映射名称
+2. Markdown 文件中的一级标题（`# 标题`）
+3. 文件名（去除 `.md` 后缀，`-` 替换为空格）
+
+如需自定义标题，可编辑 `scripts/generate-docs-structure.js` 中的 `labelMap`。
