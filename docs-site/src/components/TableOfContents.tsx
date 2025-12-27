@@ -286,7 +286,7 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
     
     if (targetElement) {
       const headerHeight = 64
-      const offset = 24
+      const offset = 44
       const targetPosition = targetElement.getBoundingClientRect().top + window.scrollY - headerHeight - offset
       
       window.scrollTo({
