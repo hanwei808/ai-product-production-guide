@@ -79,7 +79,7 @@ export default async function DocPage({ params }: PageProps) {
     <article>
       <div style={{ 
         position: 'sticky', 
-        top: 0, 
+        top: 64, 
         zIndex: 10, 
         paddingTop: 24,
         paddingBottom: 12,

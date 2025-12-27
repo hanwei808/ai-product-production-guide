@@ -68,12 +68,12 @@ export function AppLayout({ children }: AppLayoutProps) {
         },
       }}
     >
-      <Layout style={{ height: '100vh', overflow: 'hidden' }}>
+      <Layout style={{ minHeight: '100vh', overflow: 'visible' }}>
         <Header 
           onMenuClick={toggleMobileMenu} 
           mobileMenuOpen={mobileMenuOpen}
         />
-        <Layout style={{ marginTop: 'var(--header-height, 64px)', height: 'calc(100vh - var(--header-height, 64px))' }}>
+        <Layout style={{ marginTop: 0, minHeight: '100vh', paddingTop: 'var(--header-height, 64px)' }}>
           {/* 移动端遮罩层 */}
           <div 
             className={`mobile-overlay ${mobileMenuOpen ? 'visible' : ''}`}
@@ -100,10 +100,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                 ? '4px 0 30px rgba(0, 0, 0, 0.03), inset -1px 0 1px rgba(255, 255, 255, 0.8)'
                 : '4px 0 30px rgba(0, 0, 0, 0.15), inset -1px 0 1px rgba(255, 255, 255, 0.08)',
               overflow: 'auto',
-              height: 'calc(100vh - var(--header-height, 64px))',
+              height: '100vh',
               position: 'fixed',
               left: 0,
-              top: 'var(--header-height, 64px)',
+              top: 0,
+              paddingTop: 'var(--header-height, 64px)',
             }}
           >
             <Sidebar collapsed={collapsed} onItemClick={isMobile ? closeMobileMenu : undefined} />
@@ -114,8 +115,10 @@ export function AppLayout({ children }: AppLayoutProps) {
               marginLeft: collapsed ? 80 : 280,
               marginRight: 240,
               padding: '24px 48px',
-              height: '100%',
-              overflow: 'auto',
+              paddingTop: 'calc(var(--header-height, 64px) + 24px)',
+              marginTop: 'calc(-1 * var(--header-height, 64px) + 58px)',
+              minHeight: '100vh',
+              overflow: 'visible',
               background: 'transparent',
               transition: 'margin-left 0.2s, margin-right 0.2s',
             }}

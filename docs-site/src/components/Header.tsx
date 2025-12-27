@@ -21,8 +21,8 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
       className="app-header"
       style={{
         background: theme === 'light' 
-          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 100%)' 
-          : 'linear-gradient(135deg, rgba(45, 45, 50, 0.6) 0%, rgba(30, 30, 35, 0.5) 100%)',
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)' 
+          : 'linear-gradient(135deg, rgba(45, 45, 50, 0.3) 0%, rgba(30, 30, 35, 0.25) 100%)',
         backdropFilter: 'saturate(200%) blur(40px)',
         WebkitBackdropFilter: 'saturate(200%) blur(40px)',
         display: 'flex',
