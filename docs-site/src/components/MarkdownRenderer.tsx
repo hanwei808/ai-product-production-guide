@@ -3,9 +3,18 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
 import Latex from '@ant-design/x-markdown/plugins/Latex'
-import { Mermaid, CodeHighlighter, Think } from '@ant-design/x'
+import { Mermaid, CodeHighlighter, Think, Sources } from '@ant-design/x'
 import { Spin, Skeleton } from 'antd'
 import { Line, Column, Pie, Area, Scatter } from '@antv/gpt-vis'
+
+// Sources 来源数据项接口
+interface SourcesItem {
+  key?: React.Key
+  title: React.ReactNode
+  url?: string
+  icon?: React.ReactNode
+  description?: React.ReactNode
+}
 
 interface MarkdownRendererProps {
   content: string
@@ -177,6 +186,128 @@ const ThinkComponent: React.FC<ComponentProps> = React.memo((props) => {
 
 ThinkComponent.displayName = 'ThinkComponent'
 
+// Sources 来源引用组件 - 用于展示引用的数据来源地址（块级模式）
+const SourcesComponent: React.FC<ComponentProps> = React.memo((props) => {
+  const { children, streamStatus } = props
+
+  if (typeof children !== 'string') {
+    return null
+  }
+
+  try {
+    const data = JSON.parse(children) as {
+      title?: string
+      items: SourcesItem[]
+      expandIconPosition?: 'start' | 'end'
+      defaultExpanded?: boolean
+    }
+
+    if (streamStatus === 'loading') {
+      return <Skeleton active paragraph={{ rows: 2 }} />
+    }
+
+    return (
+      <div style={{ padding: '12px 0' }}>
+        <Sources
+          title={data.title || `使用了 ${data.items?.length || 0} 个来源`}
+          items={data.items || []}
+          expandIconPosition={data.expandIconPosition || 'start'}
+          defaultExpanded={data.defaultExpanded !== false}
+          onClick={(item) => {
+            if (item.url) {
+              window.open(item.url, '_blank', 'noopener,noreferrer')
+            }
+          }}
+        />
+      </div>
+    )
+  } catch {
+    return <div>来源数据解析错误</div>
+  }
+})
+
+SourcesComponent.displayName = 'SourcesComponent'
+
+// Sources 行内引用组件 - 用于在文本中嵌入来源引用标记
+const SourcesInline: React.FC<ComponentProps> = React.memo((props) => {
+  const { children } = props
+
+  if (typeof children !== 'string') {
+    return null
+  }
+
+  try {
+    const data = JSON.parse(children) as {
+      activeKey?: React.Key
+      items: SourcesItem[]
+      popoverOverlayWidth?: number | string
+    }
+
+    return (
+      <Sources
+        activeKey={data.activeKey}
+        title={String(data.activeKey || '')}
+        items={data.items || []}
+        inline={true}
+        popoverOverlayWidth={data.popoverOverlayWidth || 300}
+      />
+    )
+  } catch {
+    // 如果解析失败，可能是简单的引用标记
+    return (
+      <sup style={{ 
+        color: '#1890ff', 
+        cursor: 'pointer',
+        fontWeight: 500 
+      }}>
+        [{children}]
+      </sup>
+    )
+  }
+})
+
+SourcesInline.displayName = 'SourcesInline'
+
+// 上标引用组件 - 用于配合 Sources 渲染来源引用（sup 标签）
+const SupComponent: React.FC<ComponentProps & { sourcesData?: SourcesItem[] }> = React.memo((props) => {
+  const { children, sourcesData } = props
+
+  // 如果没有 sourcesData，使用默认的示例数据
+  const defaultItems: SourcesItem[] = [
+    {
+      title: '1. 数据来源',
+      key: 1,
+      url: '#',
+      description: '这是一个引用来源的描述信息。',
+    },
+    {
+      title: '2. 数据来源',
+      key: 2,
+      url: '#',
+    },
+    {
+      title: '3. 数据来源',
+      key: 3,
+      url: '#',
+    },
+  ]
+
+  const items = sourcesData || defaultItems
+  const childrenStr = typeof children === 'string' ? children : String(children ?? '0')
+  const activeKey = Number.parseInt(childrenStr, 10)
+
+  return (
+    <Sources
+      activeKey={activeKey}
+      title={childrenStr}
+      items={items}
+      inline={true}
+    />
+  )
+})
+
+SupComponent.displayName = 'SupComponent'
+
 export function MarkdownRenderer({ 
   content, 
   streaming = true,
@@ -232,6 +363,9 @@ export function MarkdownRenderer({
           code: Code, 
           table: Table,
           think: ThinkComponent,
+          sources: SourcesComponent,
+          'sources-inline': SourcesInline,
+          sup: SupComponent,
           'custom-line': CustomLine,
           'custom-column': CustomColumn,
           'custom-pie': CustomPie,
