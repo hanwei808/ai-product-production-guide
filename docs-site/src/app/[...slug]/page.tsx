@@ -83,7 +83,6 @@ export default async function DocPage({ params }: PageProps) {
         zIndex: 10, 
         paddingTop: 24,
         paddingBottom: 12,
-        marginTop: -24,
         background: 'inherit',
         backdropFilter: 'blur(8px)',
       }}>

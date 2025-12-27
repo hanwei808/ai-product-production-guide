@@ -422,20 +422,6 @@ body {
   padding-left: 56px !important;
 }
 
-/* 菜单分割线效果 */
-.sidebar-menu .ant-menu-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 0;
-  background: var(--color-primary);
-  border-radius: 0 2px 2px 0;
-  transition: height var(--transition-normal);
-}
-
 .sidebar-menu .ant-menu-item-selected::before {
   height: 60%;
 }
