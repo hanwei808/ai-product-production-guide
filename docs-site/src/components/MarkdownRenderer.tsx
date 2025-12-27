@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
 import Latex from '@ant-design/x-markdown/plugins/Latex'
 import { Mermaid, CodeHighlighter, Think, Sources } from '@ant-design/x'
@@ -749,12 +749,33 @@ export function MarkdownRenderer({
   const [isStreaming, setIsStreaming] = useState(streaming)
   const contentRef = useRef(content)
   const indexRef = useRef(0)
+  const isMountedRef = useRef(true) // 跟踪组件是否已挂载
+  const rafIdRef = useRef<number | null>(null) // 保存 requestAnimationFrame ID
+  const lastTimeRef = useRef<number>(0) // 上次更新时间
+  
+  // 清理函数 - 立即停止所有渲染工作
+  const cleanup = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
+      rafIdRef.current = null
+    }
+  }, [])
+  
+  // 组件卸载时立即清理
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      cleanup()
+    }
+  }, [cleanup])
   
   useEffect(() => {
     // 如果内容变化，重置状态
     if (content !== contentRef.current) {
       contentRef.current = content
       indexRef.current = 0
+      lastTimeRef.current = 0
       setDisplayContent('')
       setIsStreaming(streaming)
     }
@@ -764,20 +785,42 @@ export function MarkdownRenderer({
       return
     }
     
-    // 流式渲染效果
-    const timer = setInterval(() => {
-      if (indexRef.current < content.length) {
-        const nextIndex = Math.min(indexRef.current + streamingSpeed, content.length)
-        setDisplayContent(content.slice(0, nextIndex))
-        indexRef.current = nextIndex
-      } else {
-        setIsStreaming(false)
-        clearInterval(timer)
-      }
-    }, 16) // 调整流式渲染速度 16 ~60ps
+    // 清理之前的动画帧
+    cleanup()
     
-    return () => clearInterval(timer)
-  }, [content, streaming, streamingSpeed])
+    // 使用 requestAnimationFrame 进行流式渲染，更流畅且易于中断
+    const animate = (currentTime: number) => {
+      // 立即检查是否需要停止
+      if (!isMountedRef.current) {
+        return
+      }
+      
+      // 控制更新频率，约 60fps
+      if (currentTime - lastTimeRef.current >= 16) {
+        lastTimeRef.current = currentTime
+        
+        if (indexRef.current < content.length) {
+          const nextIndex = Math.min(indexRef.current + streamingSpeed, content.length)
+          setDisplayContent(content.slice(0, nextIndex))
+          indexRef.current = nextIndex
+        } else {
+          setIsStreaming(false)
+          rafIdRef.current = null
+          return
+        }
+      }
+      
+      // 继续下一帧
+      if (isMountedRef.current && indexRef.current < content.length) {
+        rafIdRef.current = requestAnimationFrame(animate)
+      }
+    }
+    
+    // 启动动画
+    rafIdRef.current = requestAnimationFrame(animate)
+    
+    return cleanup
+  }, [content, streaming, streamingSpeed, cleanup])
   
   if (!displayContent && isStreaming) {
     return (
