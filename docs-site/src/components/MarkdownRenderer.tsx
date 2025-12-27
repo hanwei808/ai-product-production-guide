@@ -4,7 +4,8 @@ import React, { useEffect, useState, useRef } from 'react'
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
 import Latex from '@ant-design/x-markdown/plugins/Latex'
 import { Mermaid, CodeHighlighter } from '@ant-design/x'
-import { Spin } from 'antd'
+import { Spin, Skeleton } from 'antd'
+import { Line, Column, Pie, Area, Scatter } from '@antv/gpt-vis'
 
 interface MarkdownRendererProps {
   content: string
@@ -40,6 +41,106 @@ const Table: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = React.memo(
 })
 
 Table.displayName = 'Table'
+
+// GPT-VIS 图表组件 - 折线图
+const CustomLine: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle?: string }> = React.memo((props) => {
+  const { children, axisXTitle, axisYTitle, streamStatus } = props
+
+  if (streamStatus === 'loading') {
+    return <Skeleton.Image active style={{ width: '100%', height: 300 }} />
+  }
+
+  if (typeof children !== 'string') return null
+
+  try {
+    const data = JSON.parse(children)
+    return <Line data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+  } catch {
+    return <div>图表数据解析错误</div>
+  }
+})
+
+CustomLine.displayName = 'CustomLine'
+
+// GPT-VIS 图表组件 - 柱状图
+const CustomColumn: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle?: string }> = React.memo((props) => {
+  const { children, axisXTitle, axisYTitle, streamStatus } = props
+
+  if (streamStatus === 'loading') {
+    return <Skeleton.Image active style={{ width: '100%', height: 300 }} />
+  }
+
+  if (typeof children !== 'string') return null
+
+  try {
+    const data = JSON.parse(children)
+    return <Column data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+  } catch {
+    return <div>图表数据解析错误</div>
+  }
+})
+
+CustomColumn.displayName = 'CustomColumn'
+
+// GPT-VIS 图表组件 - 饼图
+const CustomPie: React.FC<ComponentProps> = React.memo((props) => {
+  const { children, streamStatus } = props
+
+  if (streamStatus === 'loading') {
+    return <Skeleton.Image active style={{ width: '100%', height: 300 }} />
+  }
+
+  if (typeof children !== 'string') return null
+
+  try {
+    const data = JSON.parse(children)
+    return <Pie data={data} />
+  } catch {
+    return <div>图表数据解析错误</div>
+  }
+})
+
+CustomPie.displayName = 'CustomPie'
+
+// GPT-VIS 图表组件 - 面积图
+const CustomArea: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle?: string }> = React.memo((props) => {
+  const { children, axisXTitle, axisYTitle, streamStatus } = props
+
+  if (streamStatus === 'loading') {
+    return <Skeleton.Image active style={{ width: '100%', height: 300 }} />
+  }
+
+  if (typeof children !== 'string') return null
+
+  try {
+    const data = JSON.parse(children)
+    return <Area data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+  } catch {
+    return <div>图表数据解析错误</div>
+  }
+})
+
+CustomArea.displayName = 'CustomArea'
+
+// GPT-VIS 图表组件 - 散点图
+const CustomScatter: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle?: string }> = React.memo((props) => {
+  const { children, axisXTitle, axisYTitle, streamStatus } = props
+
+  if (streamStatus === 'loading') {
+    return <Skeleton.Image active style={{ width: '100%', height: 300 }} />
+  }
+
+  if (typeof children !== 'string') return null
+
+  try {
+    const data = JSON.parse(children)
+    return <Scatter data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+  } catch {
+    return <div>图表数据解析错误</div>
+  }
+})
+
+CustomScatter.displayName = 'CustomScatter'
 
 export function MarkdownRenderer({ 
   content, 
@@ -92,8 +193,17 @@ export function MarkdownRenderer({
     <div className={`markdown-body ${isStreaming ? 'streaming-cursor' : ''}`}>
       <XMarkdown 
         config={{ extensions: Latex() }}
-        components={{ code: Code, table: Table }}
+        components={{ 
+          code: Code, 
+          table: Table,
+          'custom-line': CustomLine,
+          'custom-column': CustomColumn,
+          'custom-pie': CustomPie,
+          'custom-area': CustomArea,
+          'custom-scatter': CustomScatter,
+        }}
         paragraphTag="div"
+        streaming={{ hasNextChunk: isStreaming }}
       >
         {displayContent}
       </XMarkdown>
