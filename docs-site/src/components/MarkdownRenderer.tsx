@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
-import { XMarkdown } from '@ant-design/x-markdown'
+import React, { useEffect, useState, useRef } from 'react'
+import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
+import { Mermaid } from '@ant-design/x'
 import { Spin } from 'antd'
 
 interface MarkdownRendererProps {
@@ -9,6 +10,28 @@ interface MarkdownRendererProps {
   streaming?: boolean
   streamingSpeed?: number // 每次添加的字符数
 }
+
+// 自定义代码组件，用于处理 mermaid 图表
+const Code: React.FC<ComponentProps> = React.memo((props) => {
+  const { className, children } = props
+  const lang = className?.match(/language-(\w+)/)?.[1] || ''
+
+  if (typeof children !== 'string') return null
+  
+  // 如果是 mermaid 代码块，使用 Mermaid 组件渲染
+  if (lang === 'mermaid') {
+    return <Mermaid>{children}</Mermaid>
+  }
+  
+  // 其他代码块使用默认渲染
+  return (
+    <code className={className}>
+      {children}
+    </code>
+  )
+})
+
+Code.displayName = 'Code'
 
 export function MarkdownRenderer({ 
   content, 
@@ -44,7 +67,7 @@ export function MarkdownRenderer({
         setIsStreaming(false)
         clearInterval(timer)
       }
-    }, 16) // ~60fps
+    }, 100) // 调整流式渲染速度
     
     return () => clearInterval(timer)
   }, [content, streaming, streamingSpeed])
@@ -59,7 +82,10 @@ export function MarkdownRenderer({
   
   return (
     <div className={`markdown-body ${isStreaming ? 'streaming-cursor' : ''}`}>
-      <XMarkdown>
+      <XMarkdown 
+        components={{ code: Code }}
+        paragraphTag="div"
+      >
         {displayContent}
       </XMarkdown>
     </div>
