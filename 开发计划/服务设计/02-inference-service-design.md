@@ -62,6 +62,11 @@ graph TD
         LB[Load Balancer]
         Queue[Request Queue]
         Monitor[Health Monitor]
+        SemanticCache[Semantic Cache]
+    end
+
+    subgraph 缓存层
+        Redis[(Redis)]
     end
 
     subgraph 开发环境
@@ -81,7 +86,9 @@ graph TD
     Admin -->|Management API| Gateway
 
     Gateway --> Router
-    Router --> LB
+    Router --> SemanticCache
+    SemanticCache -->|cache miss| LB
+    SemanticCache --> Redis
     LB --> Queue
 
     Queue -->|开发| Ollama
@@ -514,13 +521,13 @@ sequenceDiagram
 
 ### 8.3 外部依赖
 
-| 依赖服务              | 类型       | 用途             |
-| --------------------- | ---------- | ---------------- |
-| Ollama Server         | 必需(开发) | 开发环境推理引擎 |
-| vLLM Cluster          | 必需(生产) | 生产环境推理引擎 |
-| 模型存储 (S3/NFS)     | 必需       | 模型文件存储     |
-| Redis                 | 可选       | 请求去重、限流   |
-| observability-service | 可选       | 指标上报         |
+| 依赖服务              | 类型       | 用途                     |
+| --------------------- | ---------- | ------------------------ |
+| Ollama Server         | 必需(开发) | 开发环境推理引擎         |
+| vLLM Cluster          | 必需(生产) | 生产环境推理引擎         |
+| 模型存储 (S3/NFS)     | 必需       | 模型文件存储             |
+| Redis                 | 建议       | 语义缓存、请求去重、限流 |
+| observability-service | 可选       | 指标上报                 |
 
 ---
 

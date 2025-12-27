@@ -126,7 +126,7 @@ graph TB
     subgraph Infrastructure Layer
         MilvusClient[Milvus Client]
         InferenceClient[Inference Client]
-        CacheClient[Cache Client]
+        CacheClient[Cache Client<br/>Redis]
     end
 
     gRPC --> RetrievalService
@@ -665,6 +665,10 @@ graph TD
         ResultCache[结果缓存]
     end
 
+    subgraph 缓存存储
+        Redis[(Redis)]
+    end
+
     subgraph 索引优化
         PartitionPruning[分区裁剪]
         IndexWarmup[索引预热]
@@ -679,6 +683,9 @@ graph TD
 
     QueryCache --> EmbeddingCache
     EmbeddingCache --> ResultCache
+    QueryCache --> Redis
+    EmbeddingCache --> Redis
+    ResultCache --> Redis
 
     PartitionPruning --> IndexWarmup
     IndexWarmup --> BatchQuery
@@ -689,11 +696,13 @@ graph TD
 
 ### 10.2 缓存策略
 
-| 缓存层级     | 缓存内容   | TTL     | 缓存键              |
-| ------------ | ---------- | ------- | ------------------- |
-| L1 Embedding | Query 向量 | 1 小时  | hash(query)         |
-| L2 Result    | 检索结果   | 10 分钟 | hash(query+filters) |
-| L3 Rerank    | 重排序结果 | 5 分钟  | hash(candidates)    |
+> 💡 **缓存存储**: 所有缓存均使用 Redis 作为统一存储后端，支持分布式部署场景。
+
+| 缓存层级     | 缓存内容   | TTL     | 缓存键              | 存储后端 |
+| ------------ | ---------- | ------- | ------------------- | -------- |
+| L1 Embedding | Query 向量 | 1 小时  | hash(query)         | Redis    |
+| L2 Result    | 检索结果   | 10 分钟 | hash(query+filters) | Redis    |
+| L3 Rerank    | 重排序结果 | 5 分钟  | hash(candidates)    | Redis    |
 
 ### 10.3 性能指标
 

@@ -4,11 +4,12 @@
 
 ## 📋 技术决策摘要
 
-| 决策项     | 选择                               | 理由                               |
-| ---------- | ---------------------------------- | ---------------------------------- |
-| 向量数据库 | **Milvus Standalone** (起步即部署) | 避免后期迁移成本，支持亿级向量扩展 |
-| Dify 定位  | **长期保留**                       | 作为非技术人员的低代码编排入口     |
-| RAG 服务   | **独立拆分 rag-service**           | 解耦复杂检索逻辑，便于独立优化     |
+| 决策项     | 选择                               | 理由                                       |
+| ---------- | ---------------------------------- | ------------------------------------------ |
+| 向量数据库 | **Milvus Standalone** (起步即部署) | 避免后期迁移成本，支持亿级向量扩展         |
+| 缓存层     | **Redis 7.x**                      | 推理缓存、会话存储、限流，降低成本提升性能 |
+| Dify 定位  | **长期保留**                       | 作为非技术人员的低代码编排入口             |
+| RAG 服务   | **独立拆分 rag-service**           | 解耦复杂检索逻辑，便于独立优化             |
 
 ---
 
@@ -49,6 +50,7 @@ graph TD
     subgraph 存储层
         PG[(PostgreSQL)]
         Milvus[(Milvus)]
+        Redis[(Redis)]
     end
 
     UI --> Gateway
@@ -61,7 +63,9 @@ graph TD
     ETL --> Milvus
     ETL --> PG
     Core --> Data
+    Core --> Redis
     Data --> PG
+    Data --> Redis
     Core -.-> Obs
     Dify -.-> Obs
 ```
@@ -125,6 +129,7 @@ gantt
     section 存储
     PostgreSQL 部署与初始化     :a1, 2025-01-06, 2d
     Milvus Standalone 部署     :a2, after a1, 2d
+    Redis 部署与配置           :a3, after a2, 1d
     section 推理
     Ollama 环境配置            :b1, 2025-01-06, 1d
     模型下载与测试             :b2, after b1, 1d
@@ -137,12 +142,13 @@ gantt
 
 #### 任务清单
 
-| 任务              | 技术要点                                 | 交付物                         |
-| ----------------- | ---------------------------------------- | ------------------------------ |
-| PostgreSQL 部署   | Docker, 初始化脚本, 连接池配置           | `docker-compose.yml`, DDL 脚本 |
-| Milvus Standalone | Docker, Collection 设计, 索引策略        | Milvus 配置, Collection Schema |
-| Ollama 配置       | GPU 驱动, 模型拉取 (qwen2.5/deepseek-r1) | 模型列表, 健康检查脚本         |
-| LangFuse 部署     | Docker Compose, 环境变量                 | 观测平台可访问                 |
+| 任务              | 技术要点                                 | 交付物                            |
+| ----------------- | ---------------------------------------- | --------------------------------- |
+| PostgreSQL 部署   | Docker, 初始化脚本, 连接池配置           | `docker-compose.yml`, DDL 脚本    |
+| Milvus Standalone | Docker, Collection 设计, 索引策略        | Milvus 配置, Collection Schema    |
+| Redis 部署        | Docker, 持久化配置, 缓存策略             | Redis 配置, 缓存 Key 命名规范文档 |
+| Ollama 配置       | GPU 驱动, 模型拉取 (qwen2.5/deepseek-r1) | 模型列表, 健康检查脚本            |
+| LangFuse 部署     | Docker Compose, 环境变量                 | 观测平台可访问                    |
 
 #### 关键配置
 
@@ -161,6 +167,19 @@ services:
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Milvus 依赖：etcd
   etcd:
@@ -243,6 +262,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   etcd_data:
   minio_data:
   milvus_data:
@@ -253,6 +273,7 @@ volumes:
 >
 > ```bash
 > PG_PASSWORD=your_secure_password
+> REDIS_PASSWORD=your_redis_password
 > MINIO_PASSWORD=your_minio_password
 > LANGFUSE_SECRET=your_langfuse_secret
 > LANGFUSE_SALT=your_langfuse_salt

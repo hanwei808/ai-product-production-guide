@@ -901,6 +901,11 @@ graph TD
         PromptCache[Prompt 模板缓存]
         ToolCache[工具定义缓存]
         EmbeddingCache[Embedding 缓存]
+        SessionCache[会话上下文缓存]
+    end
+
+    subgraph 缓存存储
+        Redis[(Redis)]
     end
 
     subgraph 资源优化
@@ -916,6 +921,9 @@ graph TD
     PromptCache --> ConnectionPool
     ToolCache --> ThreadPool
     EmbeddingCache --> CircuitBreaker
+    SessionCache --> Redis
+    PromptCache --> Redis
+    EmbeddingCache --> Redis
 ```
 
 ### 8.2 并发模型
@@ -960,18 +968,22 @@ graph TD
 
 ### 9.2 核心配置项
 
-| 配置分类 | 配置项                  | 说明          |
-| -------- | ----------------------- | ------------- |
-| 推理服务 | inference.base-url      | 推理服务地址  |
-| 推理服务 | inference.default-model | 默认模型      |
-| 推理服务 | inference.timeout       | 推理超时时间  |
-| RAG 服务 | rag.grpc-address        | gRPC 服务地址 |
-| RAG 服务 | rag.default-top-k       | 默认检索数量  |
-| Agent    | agent.max-iterations    | 最大迭代次数  |
-| Agent    | agent.tool-timeout      | 工具执行超时  |
-| MCP      | mcp.server.port         | MCP 服务端口  |
-| 可观测   | otel.exporter.endpoint  | OTLP 导出端点 |
-| 安全     | security.rate-limit     | 限流阈值      |
+| 配置分类 | 配置项                  | 说明           |
+| -------- | ----------------------- | -------------- |
+| 推理服务 | inference.base-url      | 推理服务地址   |
+| 推理服务 | inference.default-model | 默认模型       |
+| 推理服务 | inference.timeout       | 推理超时时间   |
+| RAG 服务 | rag.grpc-address        | gRPC 服务地址  |
+| RAG 服务 | rag.default-top-k       | 默认检索数量   |
+| Redis    | redis.host              | Redis 主机地址 |
+| Redis    | redis.port              | Redis 端口     |
+| Redis    | redis.password          | Redis 密码     |
+| Redis    | redis.session-ttl       | 会话缓存 TTL   |
+| Agent    | agent.max-iterations    | 最大迭代次数   |
+| Agent    | agent.tool-timeout      | 工具执行超时   |
+| MCP      | mcp.server.port         | MCP 服务端口   |
+| 可观测   | otel.exporter.endpoint  | OTLP 导出端点  |
+| 安全     | security.rate-limit     | 限流阈值       |
 
 ### 9.3 动态配置
 
