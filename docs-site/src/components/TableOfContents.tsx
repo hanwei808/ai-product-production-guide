@@ -346,7 +346,15 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
       >
         目录
       </Title>
-      <nav style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+      <nav 
+        className="toc-nav"
+        style={{ 
+          maxHeight: 'calc(100vh - 200px)', 
+          overflowY: 'auto',
+          scrollbarWidth: 'none', // Firefox
+          msOverflowStyle: 'none', // IE/Edge
+        }}
+      >
         {renderItems(tocItems)}
       </nav>
     </div>

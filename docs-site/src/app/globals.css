@@ -1064,22 +1064,9 @@ html[data-theme='dark'] body {
   padding-left: 12px;
 }
 
-/* 自定义滚动条样式 */
-.toc-container::-webkit-scrollbar {
-  width: 4px;
-}
-
-.toc-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.toc-container::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
-}
-
-.toc-container::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+/* 隐藏目录滚动条 */
+.toc-nav::-webkit-scrollbar {
+  display: none;
 }
 
 /* 响应式：在小屏幕隐藏目录导航 */
