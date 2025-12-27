@@ -56,7 +56,14 @@ export default async function DocPage({ params }: PageProps) {
     ...slug.map((s, index) => {
       const path = '/' + slug.slice(0, index + 1).join('/')
       const isLast = index === slug.length - 1
-      const title = s.replace(/-/g, ' ').replace(/^\d+-/, '')
+      // 解码 URL 编码的中文字符
+      let decodedSegment = s
+      try {
+        decodedSegment = decodeURIComponent(s)
+      } catch {
+        // 解码失败时使用原始值
+      }
+      const title = decodedSegment.replace(/-/g, ' ').replace(/^\d+-/, '')
       
       return {
         title: isLast ? (
@@ -70,7 +77,18 @@ export default async function DocPage({ params }: PageProps) {
   
   return (
     <article>
-      <Breadcrumb items={breadcrumbItems} style={{ marginBottom: 24 }} />
+      <div style={{ 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 10, 
+        paddingTop: 24,
+        paddingBottom: 12,
+        marginTop: -24,
+        background: 'inherit',
+        backdropFilter: 'blur(8px)',
+      }}>
+        <Breadcrumb items={breadcrumbItems} />
+      </div>
       <MarkdownRenderer content={doc.content} streaming={true} streamingSpeed={50} />
     </article>
   )
