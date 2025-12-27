@@ -221,7 +221,7 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
   useEffect(() => {
     if (!visible || flatItemsRef.current.length === 0) return
 
-    const headerHeight = 88
+    const headerHeight = 108
 
     const updateActiveKey = () => {
       const items = flatItemsRef.current
