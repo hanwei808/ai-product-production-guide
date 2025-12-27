@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
+import Latex from '@ant-design/x-markdown/plugins/Latex'
 import { Mermaid, CodeHighlighter } from '@ant-design/x'
 import { Spin } from 'antd'
 
@@ -90,6 +91,7 @@ export function MarkdownRenderer({
   return (
     <div className={`markdown-body ${isStreaming ? 'streaming-cursor' : ''}`}>
       <XMarkdown 
+        config={{ extensions: Latex() }}
         components={{ code: Code, table: Table }}
         paragraphTag="div"
       >
