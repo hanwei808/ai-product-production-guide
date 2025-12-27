@@ -74,15 +74,7 @@ export function Sidebar() {
   
   // 从路径中提取当前选中的 key
   const selectedKey = pathname.replace(/^\//, '').replace(/\/$/, '')
-  
-  // 计算需要展开的 keys
-  const openKeys = selectedKey.split('/').reduce((acc: string[], part, index, arr) => {
-    if (index < arr.length - 1) {
-      acc.push(arr.slice(0, index + 1).join('/'))
-    }
-    return acc
-  }, [])
-  
+    
   const menuItems: MenuProps['items'] = [
     {
       key: 'home',
@@ -103,6 +95,9 @@ export function Sidebar() {
         borderRight: 0,
         height: '100%',
         paddingTop: 16,
+        paddingBottom: 16,
+        overflowY: 'auto',
+        overflowX: 'hidden',
       }}
     />
   )
