@@ -240,7 +240,7 @@ html[data-theme='dark'] body {
   overflow: auto;
   font-size: 85%;
   line-height: 1.45;
-  background-color: var(--color-bg-subtle);
+  /* background-color: var(--color-bg-subtle); */
   border-radius: var(--radius-md);
   margin: 1em 0;
 }
@@ -306,7 +306,11 @@ html[data-theme='dark'] body {
 }
 
 .markdown-body table tr:nth-child(2n) {
-  background-color: var(--color-bg-light);
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+[data-theme='dark'] .markdown-body table tr:nth-child(2n) {
+  background-color: rgba(30, 41, 59, 0.5);
 }
 
 .markdown-body ul,
@@ -341,6 +345,37 @@ html[data-theme='dark'] body {
 .markdown-body .mermaid {
   text-align: center;
   margin: 1.5em 0;
+}
+
+/* Mermaid 图表背景透明 */
+.ant-mermaid .ant-mermaid-graph {
+  background: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(10px);
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+[data-theme='dark'] .ant-mermaid .ant-mermaid-graph {
+  background: rgba(30, 41, 59, 0.4) !important;
+}
+
+.ant-mermaid .ant-mermaid-graph::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
+/* 代码高亮背景半透明 */
+.ant-codeHighlighter .ant-codeHighlighter-code {
+  background: rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(10px);
+}
+
+[data-theme='dark'] .ant-codeHighlighter .ant-codeHighlighter-code {
+  background: rgba(30, 41, 59, 0.4) !important;
+}
+
+.ant-codeHighlighter .ant-codeHighlighter-code pre,
+.ant-codeHighlighter .ant-codeHighlighter-code pre code {
+  background: transparent !important;
 }
 
 /* 全屏模式下 Mermaid 图表自适应 */
@@ -600,7 +635,7 @@ html[data-theme='dark'] body {
   /* 内容区域全宽 */
   .app-content {
     margin-left: 0 !important;
-    padding: 0 16px !important;
+    padding: 0 16px 16px 16px !important;
   }
 
   /* 头部移动端适配 */
