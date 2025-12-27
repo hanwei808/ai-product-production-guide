@@ -171,12 +171,13 @@ export function AppLayout({ children }: AppLayoutProps) {
           <aside 
             className="toc-aside"
             style={{
-              width: 220,
+              width: 240,
               position: 'fixed',
               right: 20,
               top: 'calc(var(--header-height, 64px) + 24px)',
               maxHeight: 'calc(100vh - var(--header-height, 64px) - 48px)',
               overflow: 'auto',
+              padding: 10
             }}
           >
             <TableOfContents />

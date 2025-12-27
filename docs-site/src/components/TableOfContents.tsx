@@ -97,7 +97,55 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
   const [activeKey, setActiveKey] = useState<string>('')
   const rafRef = useRef<number>(0)
   const flatItemsRef = useRef<TocItem[]>([])
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [tiltStyle, setTiltStyle] = useState<React.CSSProperties>({})
 
+  // 处理鼠标移动实现3D倾斜效果
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const container = containerRef.current
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    
+    // 计算鼠标相对于中心点的偏移（-1 到 1）
+    const offsetX = (e.clientX - centerX) / (rect.width / 2)
+    const offsetY = (e.clientY - centerY) / (rect.height / 2)
+    
+    // 限制最大倾斜角度为 8 度
+    const maxTilt = 8
+    const rotateY = offsetX * maxTilt
+    const rotateX = -offsetY * maxTilt
+    
+    // 计算光泽效果位置
+    const glareX = 50 + offsetX * 30
+    const glareY = 50 + offsetY * 30
+
+    setTiltStyle({
+      transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
+      // 添加动态高光
+      backgroundImage: theme === 'light'
+        ? `
+          linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(245, 245, 250, 0.5) 100%),
+          radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.4) 0%, transparent 60%)
+        `
+        : `
+          linear-gradient(180deg, rgba(45, 45, 50, 0.6) 0%, rgba(30, 30, 35, 0.5) 100%),
+          radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.1) 0%, transparent 60%)
+        `,
+    })
+  }, [theme])
+
+  // 鼠标离开时恢复原状
+  const handleMouseLeave = useCallback(() => {
+    setTiltStyle({
+      transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
+      backgroundImage: theme === 'light'
+        ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(245, 245, 250, 0.5) 100%)'
+        : 'linear-gradient(180deg, rgba(45, 45, 50, 0.6) 0%, rgba(30, 30, 35, 0.5) 100%)',
+    })
+  }, [theme])
   // 更新目录
   const updateTocIncremental = useCallback(() => {
     const headings = extractHeadings()
@@ -316,21 +364,30 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
 
   return (
     <div 
+      ref={containerRef}
       className={`toc-container ${className || ''}`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       style={{
         padding: '16px',
+        // 苹果风格透明玻璃效果（与 Sidebar 一致）
         background: theme === 'light' 
-          ? 'rgba(255, 255, 255, 0.6)' 
-          : 'rgba(30, 41, 59, 0.6)',
-        backdropFilter: 'saturate(180%) blur(20px)',
-        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-        borderRadius: 'var(--radius-lg, 8px)',
+          ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(245, 245, 250, 0.5) 100%)' 
+          : 'linear-gradient(180deg, rgba(45, 45, 50, 0.6) 0%, rgba(30, 30, 35, 0.5) 100%)',
+        backdropFilter: 'saturate(200%) blur(40px)',
+        WebkitBackdropFilter: 'saturate(200%) blur(40px)',
+        borderRadius: '12px',
         border: theme === 'light'
-          ? '1px solid rgba(255, 255, 255, 0.8)'
-          : '1px solid rgba(255, 255, 255, 0.1)',
+          ? '1px solid rgba(255, 255, 255, 0.6)'
+          : '1px solid rgba(255, 255, 255, 0.12)',
         boxShadow: theme === 'light'
-          ? '0 4px 20px rgba(0, 0, 0, 0.05)'
-          : '0 4px 20px rgba(0, 0, 0, 0.2)',
+          ? '0 4px 30px rgba(0, 0, 0, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.8)'
+          : '0 4px 30px rgba(0, 0, 0, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.08)',
+        // 3D 倾斜效果
+        transformStyle: 'preserve-3d',
+        transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out',
+        willChange: 'transform',
+        ...tiltStyle,
       }}
     >
       <Title 
