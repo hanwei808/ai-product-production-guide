@@ -148,8 +148,6 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
     <div 
       className={`toc-container ${className || ''}`}
       style={{
-        height: '100%',
-        overflow: 'auto',
         padding: '16px',
         background: theme === 'light' 
           ? 'rgba(255, 255, 255, 0.6)' 

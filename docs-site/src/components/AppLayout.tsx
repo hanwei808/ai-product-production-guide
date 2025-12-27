@@ -129,7 +129,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               position: 'fixed',
               right: 20,
               top: 'calc(var(--header-height, 64px) + 24px)',
-              height: 'calc(100vh - var(--header-height, 64px) - 48px)',
+              maxHeight: 'calc(100vh - var(--header-height, 64px) - 48px)',
               overflow: 'auto',
             }}
           >
