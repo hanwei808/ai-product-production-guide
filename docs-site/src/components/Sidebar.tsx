@@ -51,25 +51,34 @@ const docsStructure = {
 }
 
 // 转换为 Antd Menu items 格式
-function buildMenuItems(items: any[]): MenuProps['items'] {
+function buildMenuItems(items: any[], onItemClick?: () => void): MenuProps['items'] {
   return items.map((item) => {
     if (item.children) {
       return {
         key: item.key,
         label: item.label,
         icon: item.icon || <FolderOutlined />,
-        children: buildMenuItems(item.children),
+        children: buildMenuItems(item.children, onItemClick),
       }
     }
     return {
       key: item.key,
-      label: <Link href={`/${item.key}`}>{item.label}</Link>,
+      label: (
+        <Link href={`/${item.key}`} onClick={onItemClick}>
+          {item.label}
+        </Link>
+      ),
       icon: <FileTextOutlined />,
     }
   })
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed?: boolean
+  onItemClick?: () => void
+}
+
+export function Sidebar({ collapsed, onItemClick }: SidebarProps) {
   const pathname = usePathname()
   
   // 从路径中提取当前选中的 key
@@ -78,17 +87,18 @@ export function Sidebar() {
   const menuItems: MenuProps['items'] = [
     {
       key: 'home',
-      label: <Link href="/">首页</Link>,
+      label: <Link href="/" onClick={onItemClick}>首页</Link>,
       icon: <HomeOutlined />,
     },
-    ...(buildMenuItems(docsStructure.categories) ?? []),
+    ...(buildMenuItems(docsStructure.categories, onItemClick) ?? []),
   ]
   
   return (
     <Menu
       mode="inline"
+      inlineCollapsed={collapsed}
       selectedKeys={[selectedKey || 'home']}
-      defaultOpenKeys={['技术选型', '开发计划', '开发计划/服务设计']}
+      defaultOpenKeys={collapsed ? [] : ['技术选型', '开发计划', '开发计划/服务设计']}
       items={menuItems}
       className="sidebar-menu"
       style={{ 

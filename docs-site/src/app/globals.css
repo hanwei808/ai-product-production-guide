@@ -399,3 +399,323 @@ body {
 .sidebar-menu::-webkit-scrollbar-thumb:hover {
   background: var(--gradient-scrollbar-hover);
 }
+
+/* ========================================
+   响应式断点系统
+   ======================================== */
+:root {
+  /* 断点定义 */
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1600px;
+
+  /* 侧边栏宽度 */
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 80px;
+
+  /* 头部高度 */
+  --header-height: 64px;
+}
+
+/* ========================================
+   移动端适配样式
+   ======================================== */
+
+/* 小于 768px - 手机和小平板 */
+@media screen and (max-width: 767px) {
+  :root {
+    --header-height: 56px;
+  }
+
+  /* 侧边栏在移动端隐藏 */
+  .app-sider {
+    display: none !important;
+  }
+
+  .app-sider.mobile-open {
+    display: block !important;
+    position: fixed !important;
+    z-index: 1001 !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    height: calc(100vh - var(--header-height)) !important;
+    top: var(--header-height) !important;
+    left: 0 !important;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* 移动端遮罩层 */
+  .mobile-overlay {
+    display: none;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+  }
+
+  .mobile-overlay.visible {
+    display: block;
+  }
+
+  /* 内容区域全宽 */
+  .app-content {
+    margin-left: 0 !important;
+    padding: 16px !important;
+  }
+
+  /* 头部移动端适配 */
+  .app-header {
+    padding: 0 12px !important;
+    height: var(--header-height) !important;
+  }
+
+  .app-header .header-title {
+    font-size: 16px !important;
+  }
+
+  .app-header .header-logo {
+    font-size: 20px !important;
+  }
+
+  /* 菜单按钮显示 */
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+
+  /* Markdown 内容适配 */
+  .markdown-body {
+    padding: 0 !important;
+  }
+
+  .markdown-body h1 {
+    font-size: 1.5em;
+  }
+
+  .markdown-body h2 {
+    font-size: 1.25em;
+  }
+
+  .markdown-body h3 {
+    font-size: 1.1em;
+  }
+
+  .markdown-body pre {
+    padding: 12px;
+    font-size: 80%;
+    border-radius: var(--radius-sm);
+  }
+
+  .markdown-body table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .markdown-body blockquote {
+    padding: 0 0.75em;
+    margin: 0.75em 0;
+  }
+
+  /* 侧边栏菜单项移动端适配 */
+  .sidebar-menu .ant-menu-item {
+    padding: 10px 12px !important;
+    margin: 4px 6px !important;
+  }
+
+  .sidebar-menu .ant-menu-submenu-title {
+    padding: 10px 12px !important;
+    margin: 4px 6px !important;
+  }
+}
+
+/* 768px - 992px - 平板 */
+@media screen and (min-width: 768px) and (max-width: 991px) {
+  :root {
+    --sidebar-width: 240px;
+  }
+
+  .app-sider:not(.ant-layout-sider-collapsed) {
+    width: var(--sidebar-width) !important;
+    min-width: var(--sidebar-width) !important;
+    max-width: var(--sidebar-width) !important;
+  }
+
+  .app-sider:not(.ant-layout-sider-collapsed) ~ .app-content {
+    margin-left: var(--sidebar-width) !important;
+  }
+
+  .app-content {
+    padding: 20px 24px !important;
+  }
+
+  .mobile-menu-btn {
+    display: none !important;
+  }
+
+  .markdown-body {
+    max-width: 100%;
+  }
+}
+
+/* 992px - 1200px - 小桌面 */
+@media screen and (min-width: 992px) and (max-width: 1199px) {
+  :root {
+    --sidebar-width: 260px;
+  }
+
+  .app-sider:not(.ant-layout-sider-collapsed) {
+    width: var(--sidebar-width) !important;
+    min-width: var(--sidebar-width) !important;
+    max-width: var(--sidebar-width) !important;
+  }
+
+  .app-sider:not(.ant-layout-sider-collapsed) ~ .app-content {
+    margin-left: var(--sidebar-width) !important;
+  }
+
+  .app-content {
+    padding: 24px 32px !important;
+  }
+
+  .mobile-menu-btn {
+    display: none !important;
+  }
+}
+
+/* 1200px 以上 - 大桌面 */
+@media screen and (min-width: 1200px) {
+  :root {
+    --sidebar-width: 280px;
+  }
+
+  .app-sider:not(.ant-layout-sider-collapsed) {
+    width: var(--sidebar-width) !important;
+    min-width: var(--sidebar-width) !important;
+    max-width: var(--sidebar-width) !important;
+  }
+
+  .app-sider:not(.ant-layout-sider-collapsed) ~ .app-content {
+    margin-left: var(--sidebar-width) !important;
+  }
+
+  .app-content {
+    padding: 24px 48px !important;
+  }
+
+  .mobile-menu-btn {
+    display: none !important;
+  }
+}
+
+/* 1600px 以上 - 超大屏幕 */
+@media screen and (min-width: 1600px) {
+  .markdown-body {
+    max-width: 1000px;
+  }
+
+  .app-content {
+    padding: 32px 64px !important;
+  }
+}
+
+/* ========================================
+   通用响应式工具类
+   ======================================== */
+
+/* 移动端显示/隐藏 */
+.hide-mobile {
+  display: block;
+}
+
+.show-mobile {
+  display: none;
+}
+
+@media screen and (max-width: 767px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile {
+    display: block !important;
+  }
+}
+
+/* 平板显示/隐藏 */
+.hide-tablet {
+  display: block;
+}
+
+.show-tablet {
+  display: none;
+}
+
+@media screen and (min-width: 768px) and (max-width: 991px) {
+  .hide-tablet {
+    display: none !important;
+  }
+
+  .show-tablet {
+    display: block !important;
+  }
+}
+
+/* ========================================
+   移动端菜单按钮样式
+   ======================================== */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-inverse);
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.mobile-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-menu-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ========================================
+   Sider 折叠按钮样式
+   ======================================== */
+.app-sider .ant-layout-sider-trigger {
+  background: var(--color-bg-light);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.app-sider .ant-layout-sider-trigger:hover {
+  color: var(--color-primary);
+  background: var(--gradient-hover);
+}
+
+/* 折叠状态下的 Sider */
+.app-sider.ant-layout-sider-collapsed {
+  width: var(--sidebar-collapsed-width) !important;
+  min-width: var(--sidebar-collapsed-width) !important;
+  max-width: var(--sidebar-collapsed-width) !important;
+  flex: 0 0 var(--sidebar-collapsed-width) !important;
+}
+
+.app-sider.ant-layout-sider-collapsed .ant-layout-sider-trigger {
+  width: var(--sidebar-collapsed-width) !important;
+}
