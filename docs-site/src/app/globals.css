@@ -4,6 +4,22 @@
   box-sizing: border-box;
 }
 
+/* 面包屑容器响应式样式 */
+.breadcrumb-sticky {
+  position: sticky;
+  top: 56px;
+  z-index: 10;
+  padding: 12px 16px;
+  background: inherit;
+  backdrop-filter: blur(8px);
+}
+
+@media (min-width: 768px) {
+  .breadcrumb-sticky {
+    top: 64px;
+  }
+}
+
 /* 覆盖 Ant Design Layout 默认背景 */
 .ant-layout {
   background: transparent !important;
@@ -562,7 +578,7 @@ html[data-theme='dark'] body {
   /* 内容区域全宽 */
   .app-content {
     margin-left: 0 !important;
-    padding: 16px !important;
+    padding: 0 16px !important;
   }
 
   /* 头部移动端适配 */

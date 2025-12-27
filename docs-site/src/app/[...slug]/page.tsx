@@ -77,15 +77,7 @@ export default async function DocPage({ params }: PageProps) {
   
   return (
     <article>
-      <div style={{ 
-        position: 'sticky', 
-        top: 64, 
-        zIndex: 10, 
-        paddingTop: 24,
-        paddingBottom: 12,
-        background: 'inherit',
-        backdropFilter: 'blur(8px)',
-      }}>
+      <div className="breadcrumb-sticky">
         <Breadcrumb items={breadcrumbItems} />
       </div>
       <MarkdownRenderer content={doc.content} streaming={true} streamingSpeed={50} />
