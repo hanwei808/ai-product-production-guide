@@ -962,3 +962,70 @@ body {
 .app-sider.ant-layout-sider-collapsed .ant-layout-sider-trigger {
   width: var(--sidebar-collapsed-width) !important;
 }
+
+/* ========================================
+   右侧目录导航 (Table of Contents)
+   ======================================== */
+.toc-aside {
+  display: block;
+}
+
+.toc-container .ant-anchor {
+  background: transparent !important;
+}
+
+.toc-container .ant-anchor-ink {
+  display: none;
+}
+
+.toc-container .ant-anchor-link {
+  padding: 4px 0 4px 12px;
+}
+
+.toc-container .ant-anchor-link-title {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.toc-container .ant-anchor-link-title:hover {
+  color: var(--color-primary);
+}
+
+.toc-container .ant-anchor-link-active > .ant-anchor-link-title {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.toc-container .ant-anchor-link .ant-anchor-link {
+  padding-left: 12px;
+}
+
+/* 自定义滚动条样式 */
+.toc-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.toc-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toc-container::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+
+.toc-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* 响应式：在小屏幕隐藏目录导航 */
+@media screen and (max-width: 1200px) {
+  .toc-aside {
+    display: none !important;
+  }
+}

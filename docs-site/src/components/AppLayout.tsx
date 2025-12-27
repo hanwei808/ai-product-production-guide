@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ConfigProvider, Layout, theme as antTheme } from 'antd'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
+import { TableOfContents } from '@/components/TableOfContents'
 import { useTheme } from '@/lib/ThemeContext'
 
 const { Content, Sider } = Layout
@@ -116,9 +117,22 @@ export function AppLayout({ children }: AppLayoutProps) {
               overflow: 'auto',
               background: 'transparent',
               transition: 'margin-left 0.2s',
+              display: 'flex',
+              gap: '24px',
             }}
           >
-            {children}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {children}
+            </div>
+            <aside 
+              className="toc-aside"
+              style={{
+                width: 220,
+                flexShrink: 0,
+              }}
+            >
+              <TableOfContents />
+            </aside>
           </Content>
         </Layout>
       </Layout>
