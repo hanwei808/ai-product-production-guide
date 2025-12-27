@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
 import Latex from '@ant-design/x-markdown/plugins/Latex'
-import { Mermaid, CodeHighlighter } from '@ant-design/x'
+import { Mermaid, CodeHighlighter, Think } from '@ant-design/x'
 import { Spin, Skeleton } from 'antd'
 import { Line, Column, Pie, Area, Scatter } from '@antv/gpt-vis'
 
@@ -142,6 +142,41 @@ const CustomScatter: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle
 
 CustomScatter.displayName = 'CustomScatter'
 
+// Think 思考过程组件 - 用于展示 AI 深度思考过程
+const ThinkComponent: React.FC<ComponentProps> = React.memo((props) => {
+  const { children, streamStatus } = props
+  const [title, setTitle] = useState('正在思考中...')
+  const [loading, setLoading] = useState(true)
+  const [expand, setExpand] = useState(true)
+
+  useEffect(() => {
+    if (streamStatus === 'done') {
+      setTitle('思考完成')
+      setLoading(false)
+      setExpand(false)
+    }
+  }, [streamStatus])
+
+  if (typeof children !== 'string') {
+    return null
+  }
+
+  return (
+    <div style={{ padding: '12px 0' }}>
+      <Think 
+        title={title} 
+        loading={loading} 
+        expanded={expand} 
+        onExpand={(value) => setExpand(value)}
+      >
+        {children.trim()}
+      </Think>
+    </div>
+  )
+})
+
+ThinkComponent.displayName = 'ThinkComponent'
+
 export function MarkdownRenderer({ 
   content, 
   streaming = true,
@@ -196,6 +231,7 @@ export function MarkdownRenderer({
         components={{ 
           code: Code, 
           table: Table,
+          think: ThinkComponent,
           'custom-line': CustomLine,
           'custom-column': CustomColumn,
           'custom-pie': CustomPie,
