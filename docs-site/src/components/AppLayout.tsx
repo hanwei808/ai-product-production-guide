@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { ConfigProvider, Layout, theme as antTheme } from 'antd'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
@@ -15,9 +16,15 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { theme } = useTheme()
+  const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+
+  // 切换页面时滚动到顶部
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname])
 
   // 监听窗口大小变化
   useEffect(() => {
