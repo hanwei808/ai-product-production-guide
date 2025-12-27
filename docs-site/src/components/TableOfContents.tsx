@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import { Anchor, Typography } from 'antd'
 import { useTheme } from '@/lib/ThemeContext'
 
@@ -90,18 +91,27 @@ function toAnchorItems(items: TocItem[]): any[] {
 
 export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
   const { theme } = useTheme()
+  const pathname = usePathname()
   const [tocItems, setTocItems] = useState<TocItem[]>([])
   const [visible, setVisible] = useState(false)
   const [container, setContainer] = useState<HTMLElement | Window | null>(null)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
-  const updateToc = useCallback(() => {
-    // 延迟执行以确保 DOM 已经渲染完成
-    setTimeout(() => {
-      const headings = extractHeadings()
+  // 更新目录（不清空现有内容，适用于流式加载）
+  const updateTocIncremental = useCallback(() => {
+    const headings = extractHeadings()
+    if (headings.length > 0) {
       const tree = buildTocTree(headings)
       setTocItems(tree)
-      setVisible(headings.length > 0)
-    }, 500)
+      setVisible(true)
+    }
+  }, [])
+
+  // 完全重置目录（页面切换时使用）
+  const resetToc = useCallback(() => {
+    setTocItems([])
+    setVisible(false)
+    setIsInitialLoad(true)
   }, [])
 
   useEffect(() => {
@@ -112,26 +122,63 @@ export function TableOfContents({ className }: Readonly<TableOfContentsProps>) {
     }
   }, [])
 
+  // 路由变化时重置目录
   useEffect(() => {
-    updateToc()
+    resetToc()
+  }, [pathname, resetToc])
 
-    // 监听 DOM 变化，当内容更新时重新提取标题
-    const observer = new MutationObserver(() => {
-      updateToc()
-    })
-
-    const article = document.querySelector('article')
-    if (article) {
-      observer.observe(article, {
-        childList: true,
-        subtree: true,
-      })
+  // 监听 DOM 变化，流式加载时渐进式更新目录
+  useEffect(() => {
+    let throttleTimer: NodeJS.Timeout | null = null
+    let isThrottled = false
+    let pendingUpdate = false
+    
+    const handleMutation = () => {
+      // 使用节流处理，保证流式加载时定期更新
+      if (isThrottled) {
+        pendingUpdate = true
+        return
+      }
+      
+      updateTocIncremental()
+      setIsInitialLoad(false)
+      isThrottled = true
+      
+      throttleTimer = setTimeout(() => {
+        isThrottled = false
+        if (pendingUpdate) {
+          pendingUpdate = false
+          updateTocIncremental()
+        }
+      }, 100) // 每 100ms 最多更新一次
     }
+
+    const observer = new MutationObserver(handleMutation)
+
+    // 立即开始观察，不等待
+    const initTimer = setTimeout(() => {
+      const article = document.querySelector('article')
+      if (article) {
+        // 先执行一次更新
+        updateTocIncremental()
+        setIsInitialLoad(false)
+        
+        observer.observe(article, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        })
+      }
+    }, 50) // 缩短初始延迟
 
     return () => {
+      clearTimeout(initTimer)
+      if (throttleTimer) {
+        clearTimeout(throttleTimer)
+      }
       observer.disconnect()
     }
-  }, [updateToc])
+  }, [pathname, updateTocIncremental])
 
   if (!visible || tocItems.length === 0) {
     return null
