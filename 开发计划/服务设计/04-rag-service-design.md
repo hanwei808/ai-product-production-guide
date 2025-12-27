@@ -1,7 +1,7 @@
 # RAG Service 详细设计文档
 
 > 版本：v1.1 | 优先级：P1 | 更新日期：2025-12-27
-> 技术栈：Python 3.11+ / LangChain 0.3.x / Milvus 2.4+
+> 技术栈：Python 3.11+ / LangChain 1.x / Milvus 2.4+
 
 ## 1. 服务概述
 

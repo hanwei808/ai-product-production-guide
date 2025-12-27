@@ -74,15 +74,15 @@ graph TD
 
 ## 📦 服务清单与职责
 
-| #   | 服务名                    | 技术栈                          | 职责                                   | 通信方式            | 优先级 |
-| --- | ------------------------- | ------------------------------- | -------------------------------------- | ------------------- | ------ |
-| 1   | **data-service**          | PostgreSQL 15.x                 | 业务元数据、用户数据、会话历史         | REST / JDBC         | P0     |
-| 2   | **inference-service**     | Ollama (dev) / vLLM (prod)      | 统一模型推理网关，屏蔽底层差异         | OpenAI 兼容 API     | P0     |
-| 3   | **ai-core-service**       | Spring AI Alibaba 1.1.x         | Agent 框架、多智能体编排、Tool Calling | REST / gRPC / MCP   | P0     |
-| 4   | **rag-service**           | LangChain 1.x (Python 独立服务) | 多路召回、重排序、高级 RAG 策略        | gRPC / REST         | P1     |
-| 5   | **etl-service**           | Unstructured.io 0.18.x (Python) | 64+ 格式文档解析、语义切片、VLM 增强   | REST / 消息队列     | P2     |
-| 6   | **dify-service**          | Dify 1.11.x                     | 低代码工作流、知识库管理、Prompt 灰度  | REST / MCP          | P2     |
-| 7   | **observability-service** | LangFuse 1.0.x + Promptfoo      | 链路追踪、Token 统计、Prompt 测试      | OpenTelemetry / SDK | P1     |
+| #   | 服务名                    | 技术栈                           | 职责                                   | 通信方式            | 优先级 |
+| --- | ------------------------- | -------------------------------- | -------------------------------------- | ------------------- | ------ |
+| 1   | **data-service**          | PostgreSQL 17.x                  | 业务元数据、用户数据、会话历史         | REST / JDBC         | P0     |
+| 2   | **inference-service**     | Ollama (dev) / vLLM (prod)       | 统一模型推理网关，屏蔽底层差异         | OpenAI 兼容 API     | P0     |
+| 3   | **ai-core-service**       | Spring AI Alibaba 1.1.x          | Agent 框架、多智能体编排、Tool Calling | REST / gRPC / MCP   | P0     |
+| 4   | **rag-service**           | LangChain 1.x (Python 独立服务)  | 多路召回、重排序、高级 RAG 策略        | gRPC / REST         | P1     |
+| 5   | **etl-service**           | Unstructured.io 0.18.x (Python)  | 64+ 格式文档解析、语义切片、VLM 增强   | REST / 消息队列     | P2     |
+| 6   | **dify-service**          | Dify 1.11.x                      | 低代码工作流、知识库管理、Prompt 灰度  | REST / MCP          | P2     |
+| 7   | **observability-service** | LangFuse 3.x + Promptfoo 0.120.x | 链路追踪、Token 统计、Prompt 测试      | OpenTelemetry / SDK | P1     |
 
 > ⚠️ **跨语言通信说明**: `rag-service` 和 `etl-service` 为 Python 服务，与 Java 服务（ai-core-service）通过 gRPC 或 REST API 通信。建议使用 Protocol Buffers 定义接口契约。
 
