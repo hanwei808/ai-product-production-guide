@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import { AppLayout } from '@/components/AppLayout'
+import { ThemeProvider } from '@/lib/ThemeContext'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -11,16 +12,35 @@ export const metadata: Metadata = {
   },
 }
 
+// 防止主题闪烁的内联脚本
+const themeScript = `
+  (function() {
+    try {
+      var theme = localStorage.getItem('theme-mode');
+      if (theme === 'dark' || theme === 'light') {
+        document.documentElement.setAttribute('data-theme', theme);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    } catch (e) {}
+  })()
+`
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
         <AntdRegistry>
-          <AppLayout>{children}</AppLayout>
+          <ThemeProvider>
+            <AppLayout>{children}</AppLayout>
+          </ThemeProvider>
         </AntdRegistry>
       </body>
     </html>

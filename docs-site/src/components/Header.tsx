@@ -1,8 +1,9 @@
 'use client'
 
-import { Layout, Typography, Space } from 'antd'
-import { GithubOutlined, BookOutlined, MenuOutlined, CloseOutlined } from '@ant-design/icons'
+import { Layout, Typography, Space, Tooltip } from 'antd'
+import { GithubOutlined, BookOutlined, MenuOutlined, CloseOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons'
 import Link from 'next/link'
+import { useTheme } from '@/lib/ThemeContext'
 
 const { Header: AntHeader } = Layout
 const { Title } = Typography
@@ -13,11 +14,13 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
+  const { theme, toggleTheme } = useTheme()
+
   return (
     <AntHeader
       className="app-header"
       style={{
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+        background: 'var(--header-bg, linear-gradient(135deg, #1e293b 0%, #0f172a 100%))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -48,7 +51,18 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
         </Link>
       </div>
       
-      <Space size="large">
+      <Space size="middle">
+        {/* 主题切换按钮 */}
+        <Tooltip title={theme === 'light' ? '切换到夜间模式' : '切换到白天模式'}>
+          <button
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            aria-label={theme === 'light' ? '切换到夜间模式' : '切换到白天模式'}
+          >
+            {theme === 'light' ? <MoonOutlined /> : <SunOutlined />}
+          </button>
+        </Tooltip>
+        
         <a
           href="https://github.com/hanwei808/ai-product-production-guide"
           target="_blank"

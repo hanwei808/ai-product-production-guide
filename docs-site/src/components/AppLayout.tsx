@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ConfigProvider, Layout, theme } from 'antd'
+import { ConfigProvider, Layout, theme as antTheme } from 'antd'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
+import { useTheme } from '@/lib/ThemeContext'
 
 const { Content, Sider } = Layout
 
@@ -12,6 +13,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const { theme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -53,9 +55,15 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <ConfigProvider
       theme={{
-        algorithm: theme.defaultAlgorithm,
+        algorithm: theme === 'dark' ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
         token: {
           colorPrimary: '#3b82f6',
+          colorBgContainer: theme === 'dark' ? '#1e293b' : '#ffffff',
+          colorBgElevated: theme === 'dark' ? '#334155' : '#ffffff',
+          colorBgLayout: theme === 'dark' ? '#0f172a' : '#f8fafc',
+          colorText: theme === 'dark' ? '#f1f5f9' : '#1e293b',
+          colorTextSecondary: theme === 'dark' ? '#94a3b8' : '#64748b',
+          colorBorder: theme === 'dark' ? '#475569' : '#e2e8f0',
         },
       }}
     >
@@ -79,7 +87,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             onCollapse={(value) => setCollapsed(value)}
             className={`app-sider ${mobileMenuOpen ? 'mobile-open' : ''}`}
             style={{
-              background: '#fff',
+              background: 'var(--color-bg-base)',
               borderRight: '1px solid var(--color-border)',
               overflow: 'auto',
               height: 'calc(100vh - var(--header-height, 64px))',
@@ -97,7 +105,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               padding: '24px 48px',
               height: '100%',
               overflow: 'auto',
-              background: '#fff',
+              background: 'var(--color-bg-base)',
               transition: 'margin-left 0.2s',
             }}
           >
