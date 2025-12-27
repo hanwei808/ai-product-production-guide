@@ -21,10 +21,10 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
       className="app-header"
       style={{
         background: theme === 'light' 
-          ? 'rgba(255, 255, 255, 0.72)' 
-          : 'rgba(30, 30, 30, 0.72)',
-        backdropFilter: 'saturate(180%) blur(20px)',
-        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 100%)' 
+          : 'linear-gradient(135deg, rgba(45, 45, 50, 0.6) 0%, rgba(30, 30, 35, 0.5) 100%)',
+        backdropFilter: 'saturate(200%) blur(40px)',
+        WebkitBackdropFilter: 'saturate(200%) blur(40px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -35,9 +35,11 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
         top: 0,
         height: 'var(--header-height, 64px)',
         borderBottom: theme === 'light'
-          ? '1px solid rgba(0, 0, 0, 0.1)'
-          : '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: 'none',
+          ? '1px solid rgba(255, 255, 255, 0.5)'
+          : '1px solid rgba(255, 255, 255, 0.15)',
+        boxShadow: theme === 'light'
+          ? '0 4px 30px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8)'
+          : '0 4px 30px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

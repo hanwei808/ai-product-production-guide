@@ -88,13 +88,16 @@ export function AppLayout({ children }: AppLayoutProps) {
             className={`app-sider ${mobileMenuOpen ? 'mobile-open' : ''}`}
             style={{
               background: theme === 'light' 
-                ? 'rgba(255, 255, 255, 0.72)' 
-                : 'rgba(30, 30, 30, 0.72)',
-              backdropFilter: 'saturate(180%) blur(20px)',
-              WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+                ? 'linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(245, 245, 250, 0.5) 100%)' 
+                : 'linear-gradient(180deg, rgba(45, 45, 50, 0.6) 0%, rgba(30, 30, 35, 0.5) 100%)',
+              backdropFilter: 'saturate(200%) blur(40px)',
+              WebkitBackdropFilter: 'saturate(200%) blur(40px)',
               borderRight: theme === 'light'
-                ? '1px solid rgba(0, 0, 0, 0.1)'
-                : '1px solid rgba(255, 255, 255, 0.1)',
+                ? '1px solid rgba(255, 255, 255, 0.6)'
+                : '1px solid rgba(255, 255, 255, 0.12)',
+              boxShadow: theme === 'light'
+                ? '4px 0 30px rgba(0, 0, 0, 0.03), inset -1px 0 1px rgba(255, 255, 255, 0.8)'
+                : '4px 0 30px rgba(0, 0, 0, 0.15), inset -1px 0 1px rgba(255, 255, 255, 0.08)',
               overflow: 'auto',
               height: 'calc(100vh - var(--header-height, 64px))',
               position: 'fixed',
