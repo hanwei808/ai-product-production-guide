@@ -121,6 +121,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               overflow: 'visible',
               background: 'transparent',
               transition: 'margin-left 0.2s, margin-right 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
           >
             {children}
