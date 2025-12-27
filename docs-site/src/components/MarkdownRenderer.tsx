@@ -4,9 +4,16 @@ import React, { useEffect, useState, useRef } from 'react'
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
 import Latex from '@ant-design/x-markdown/plugins/Latex'
 import { Mermaid, CodeHighlighter, Think, Sources } from '@ant-design/x'
-import { Spin, Skeleton, Typography } from 'antd'
+import { Spin, Skeleton, Typography, Modal, Button, Tooltip, Image } from 'antd'
 import { Line, Column, Pie, Area, Scatter } from '@antv/gpt-vis'
-import { LoadingOutlined, FileImageOutlined, LinkOutlined, TableOutlined, CodeOutlined } from '@ant-design/icons'
+import { 
+  LoadingOutlined, 
+  FileImageOutlined, 
+  LinkOutlined, 
+  TableOutlined, 
+  CodeOutlined,
+  ExpandOutlined
+} from '@ant-design/icons'
 
 // Sources 来源数据项接口
 interface SourcesItem {
@@ -28,6 +35,115 @@ interface MarkdownRendererProps {
   }
 }
 
+// ============ 全屏查看组件 ============
+
+interface FullscreenWrapperProps {
+  children: React.ReactNode
+  title?: string
+  modalWidth?: string | number
+  showButton?: boolean
+}
+
+// 全屏查看容器组件
+const FullscreenWrapper: React.FC<FullscreenWrapperProps> = React.memo(({ 
+  children, 
+  title = '全屏查看',
+  modalWidth = '90vw',
+  showButton = true
+}) => {
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // 全屏模式下的内容，添加高度自适应样式
+  const fullscreenContent = (
+    <div 
+      className="fullscreen-content markdown-body"
+      style={{ 
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      <div style={{ 
+        flex: 1, 
+        minHeight: 0,
+        overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {React.Children.map(children, child => {
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child as React.ReactElement<{ style?: React.CSSProperties }>, {
+              style: {
+                ...(child.props as { style?: React.CSSProperties }).style,
+                height: '100%',
+                minHeight: 0,
+                flex: 1
+              }
+            })
+          }
+          return child
+        })}
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      <div className="fullscreen-wrapper">
+        {showButton && (
+          <div 
+            className="fullscreen-toolbar"
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              padding: '4px 0',
+              marginBottom: 4
+            }}
+          >
+            <Tooltip title="全屏查看">
+              <Button
+                type="text"
+                size="small"
+                icon={<ExpandOutlined />}
+                onClick={() => setIsFullscreen(true)}
+                style={{
+                  background: 'var(--ant-color-fill-tertiary)',
+                  color: 'var(--ant-color-text-secondary)',
+                  borderRadius: 4
+                }}
+              >
+                全屏
+              </Button>
+            </Tooltip>
+          </div>
+        )}
+        {children}
+      </div>
+      <Modal
+        title={title}
+        open={isFullscreen}
+        onCancel={() => setIsFullscreen(false)}
+        footer={null}
+        width={modalWidth}
+        centered
+        styles={{
+          body: { 
+            height: 'calc(90vh - 110px)',
+            overflow: 'hidden',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column'
+          }
+        }}
+      >
+        {fullscreenContent}
+      </Modal>
+    </>
+  )
+})
+
+FullscreenWrapper.displayName = 'FullscreenWrapper'
+
 // 自定义代码组件，用于处理 mermaid 图表和代码高亮
 const Code: React.FC<ComponentProps> = React.memo((props) => {
   const { className, children } = props
@@ -35,23 +151,41 @@ const Code: React.FC<ComponentProps> = React.memo((props) => {
 
   if (typeof children !== 'string') return null
   
-  // 如果是 mermaid 代码块，使用 Mermaid 组件渲染
-  if (lang === 'mermaid') {
-    return <Mermaid>{children}</Mermaid>
+  // 判断是否是行内代码（没有 className 或内容不包含换行符且长度较短）
+  const isInlineCode = !className && !children.includes('\n') && children.length < 100
+  
+  // 行内代码不添加全屏功能，直接使用 code 标签渲染
+  if (isInlineCode) {
+    return <code className="inline-code">{children}</code>
   }
   
-  // 其他代码块使用 CodeHighlighter 组件渲染，实现语法高亮
-  return <CodeHighlighter lang={lang}>{children}</CodeHighlighter>
+  // 如果是 mermaid 代码块，使用 Mermaid 组件渲染，并添加全屏功能
+  if (lang === 'mermaid') {
+    return (
+      <FullscreenWrapper title="Mermaid 图表" modalWidth="95vw">
+        <Mermaid>{children}</Mermaid>
+      </FullscreenWrapper>
+    )
+  }
+  
+  // 其他代码块使用 CodeHighlighter 组件渲染，实现语法高亮，并添加全屏功能
+  return (
+    <FullscreenWrapper title={`代码 - ${lang || '纯文本'}`} modalWidth="90vw">
+      <CodeHighlighter lang={lang}>{children}</CodeHighlighter>
+    </FullscreenWrapper>
+  )
 })
 
 Code.displayName = 'Code'
 
-// 自定义表格组件，添加水平滚动容器
+// 自定义表格组件，添加水平滚动容器和全屏功能
 const Table: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = React.memo((props) => {
   return (
-    <div className="table-wrapper">
-      <table {...props} />
-    </div>
+    <FullscreenWrapper title="表格" modalWidth="95vw">
+      <div className="table-wrapper">
+        <table {...props} />
+      </div>
+    </FullscreenWrapper>
   )
 })
 
@@ -69,7 +203,11 @@ const CustomLine: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle?: 
 
   try {
     const data = JSON.parse(children)
-    return <Line data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+    return (
+      <FullscreenWrapper title="折线图" modalWidth="90vw">
+        <Line data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+      </FullscreenWrapper>
+    )
   } catch {
     return <div>图表数据解析错误</div>
   }
@@ -89,7 +227,11 @@ const CustomColumn: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle?
 
   try {
     const data = JSON.parse(children)
-    return <Column data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+    return (
+      <FullscreenWrapper title="柱状图" modalWidth="90vw">
+        <Column data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+      </FullscreenWrapper>
+    )
   } catch {
     return <div>图表数据解析错误</div>
   }
@@ -109,7 +251,11 @@ const CustomPie: React.FC<ComponentProps> = React.memo((props) => {
 
   try {
     const data = JSON.parse(children)
-    return <Pie data={data} />
+    return (
+      <FullscreenWrapper title="饼图" modalWidth="80vw">
+        <Pie data={data} />
+      </FullscreenWrapper>
+    )
   } catch {
     return <div>图表数据解析错误</div>
   }
@@ -129,7 +275,11 @@ const CustomArea: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle?: 
 
   try {
     const data = JSON.parse(children)
-    return <Area data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+    return (
+      <FullscreenWrapper title="面积图" modalWidth="90vw">
+        <Area data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+      </FullscreenWrapper>
+    )
   } catch {
     return <div>图表数据解析错误</div>
   }
@@ -149,7 +299,11 @@ const CustomScatter: React.FC<ComponentProps & { axisXTitle?: string; axisYTitle
 
   try {
     const data = JSON.parse(children)
-    return <Scatter data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+    return (
+      <FullscreenWrapper title="散点图" modalWidth="90vw">
+        <Scatter data={data} axisXTitle={axisXTitle} axisYTitle={axisYTitle} />
+      </FullscreenWrapper>
+    )
   } catch {
     return <div>图表数据解析错误</div>
   }
@@ -555,6 +709,32 @@ const ImageLoadingSkeleton: React.FC = React.memo(() => {
 
 ImageLoadingSkeleton.displayName = 'ImageLoadingSkeleton'
 
+// 自定义图片组件 - 支持全屏预览
+const CustomImage: React.FC<React.ImgHTMLAttributes<HTMLImageElement>> = React.memo((props) => {
+  const { src, alt } = props
+  
+  // 如果 src 不是字符串，则不渲染
+  if (typeof src !== 'string') return null
+  
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      style={{ maxWidth: '100%', cursor: 'pointer' }}
+      preview={{
+        mask: (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <ExpandOutlined />
+            <span>全屏查看</span>
+          </div>
+        )
+      }}
+    />
+  )
+})
+
+CustomImage.displayName = 'CustomImage'
+
 export function MarkdownRenderer({ 
   content, 
   streaming = true,
@@ -614,6 +794,7 @@ export function MarkdownRenderer({
         components={{ 
           code: Code, 
           table: Table,
+          img: CustomImage,
           think: ThinkComponent,
           sources: SourcesComponent,
           'sources-inline': SourcesInline,

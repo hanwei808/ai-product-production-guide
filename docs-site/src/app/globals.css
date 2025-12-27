@@ -343,6 +343,28 @@ html[data-theme='dark'] body {
   margin: 1.5em 0;
 }
 
+/* 全屏模式下 Mermaid 图表自适应 */
+.fullscreen-content .ant-mermaid {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-content .ant-mermaid .ant-mermaid-graph {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+}
+
+.fullscreen-content .ant-mermaid .ant-mermaid-graph svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
 /* 流式渲染光标动画 */
 @keyframes blink {
   0%,
@@ -745,6 +767,11 @@ html[data-theme='dark'] body {
 @media screen and (min-width: 1600px) {
   .markdown-body {
     max-width: 1000px;
+  }
+
+  /* 全屏查看时内容宽度不受限制 */
+  .fullscreen-content.markdown-body {
+    max-width: 100%;
   }
 
   .app-content {
