@@ -4,6 +4,7 @@ import { Menu } from 'antd'
 import { FileTextOutlined, FolderOutlined, HomeOutlined } from '@ant-design/icons'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { useMemo } from 'react'
 import type { MenuProps } from 'antd'
 
 // 文档结构配置（硬编码以支持静态导出）
@@ -73,6 +74,30 @@ function buildMenuItems(items: any[], onItemClick?: () => void): MenuProps['item
   })
 }
 
+// 根据当前选中的 key 计算需要展开的父级菜单 keys
+function getOpenKeys(selectedKey: string, categories: any[]): string[] {
+  const openKeys: string[] = []
+  
+  function findParentKeys(items: any[], parentKeys: string[] = []): boolean {
+    for (const item of items) {
+      if (item.key === selectedKey) {
+        openKeys.push(...parentKeys)
+        return true
+      }
+      if (item.children) {
+        const newParentKeys = [...parentKeys, item.key]
+        if (findParentKeys(item.children, newParentKeys)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+  
+  findParentKeys(categories)
+  return openKeys
+}
+
 interface SidebarProps {
   collapsed?: boolean
   onItemClick?: () => void
@@ -81,8 +106,20 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onItemClick }: SidebarProps) {
   const pathname = usePathname()
   
-  // 从路径中提取当前选中的 key
-  const selectedKey = pathname.replace(/^\//, '').replace(/\/$/, '')
+  // 从路径中提取当前选中的 key（需要解码 URL 编码的中文字符）
+  const selectedKey = useMemo(() => {
+    try {
+      return decodeURIComponent(pathname).replace(/^\//, '').replace(/\/$/, '')
+    } catch {
+      return pathname.replace(/^\//, '').replace(/\/$/, '')
+    }
+  }, [pathname])
+  
+  // 根据当前选中的 key 计算需要展开的父级菜单
+  const openKeys = useMemo(() => {
+    if (collapsed) return []
+    return getOpenKeys(selectedKey, docsStructure.categories)
+  }, [selectedKey, collapsed])
     
   const menuItems: MenuProps['items'] = [
     {
@@ -98,7 +135,7 @@ export function Sidebar({ collapsed, onItemClick }: SidebarProps) {
       mode="inline"
       inlineCollapsed={collapsed}
       selectedKeys={[selectedKey || 'home']}
-      defaultOpenKeys={collapsed ? [] : ['技术选型', '开发计划', '开发计划/服务设计']}
+      defaultOpenKeys={openKeys}
       items={menuItems}
       className="sidebar-menu"
       style={{ 
@@ -106,6 +143,7 @@ export function Sidebar({ collapsed, onItemClick }: SidebarProps) {
         height: '100%',
         paddingTop: 16,
         paddingBottom: 16,
+        paddingRight: 10,
         overflowY: 'auto',
         overflowX: 'hidden',
       }}
