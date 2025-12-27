@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { XMarkdown, type ComponentProps } from '@ant-design/x-markdown'
-import { Mermaid } from '@ant-design/x'
+import { Mermaid, CodeHighlighter } from '@ant-design/x'
 import { Spin } from 'antd'
 
 interface MarkdownRendererProps {
@@ -11,7 +11,7 @@ interface MarkdownRendererProps {
   streamingSpeed?: number // 每次添加的字符数
 }
 
-// 自定义代码组件，用于处理 mermaid 图表
+// 自定义代码组件，用于处理 mermaid 图表和代码高亮
 const Code: React.FC<ComponentProps> = React.memo((props) => {
   const { className, children } = props
   const lang = className?.match(/language-(\w+)/)?.[1] || ''
@@ -23,12 +23,8 @@ const Code: React.FC<ComponentProps> = React.memo((props) => {
     return <Mermaid>{children}</Mermaid>
   }
   
-  // 其他代码块使用默认渲染
-  return (
-    <code className={className}>
-      {children}
-    </code>
-  )
+  // 其他代码块使用 CodeHighlighter 组件渲染，实现语法高亮
+  return <CodeHighlighter lang={lang}>{children}</CodeHighlighter>
 })
 
 Code.displayName = 'Code'
