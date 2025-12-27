@@ -915,6 +915,75 @@ html[data-theme='dark'] body {
 }
 
 /* ========================================
+   移动端目录按钮样式 - 玻璃效果
+   ======================================== */
+.mobile-toc-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+  color: var(--color-text-primary);
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='dark'] .mobile-toc-btn {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.mobile-toc-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.4) 100%
+  );
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+[data-theme='dark'] .mobile-toc-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+}
+
+.mobile-toc-btn:active {
+  transform: scale(0.95);
+}
+
+/* 移动端显示目录按钮 */
+@media screen and (max-width: 767px) {
+  .mobile-toc-btn {
+    display: flex !important;
+  }
+
+  .github-link.hide-mobile {
+    display: none !important;
+  }
+}
+
+/* ========================================
    主题切换按钮样式 - 玻璃效果
    ======================================== */
 .theme-toggle-btn {

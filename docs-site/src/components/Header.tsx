@@ -1,7 +1,7 @@
 'use client'
 
 import { Layout, Typography, Space, Tooltip } from 'antd'
-import { GithubOutlined, BookOutlined, MenuOutlined, CloseOutlined, SunOutlined, MoonOutlined } from '@ant-design/icons'
+import { GithubOutlined, BookOutlined, MenuOutlined, CloseOutlined, SunOutlined, MoonOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import Link from 'next/link'
 import { useTheme } from '@/lib/ThemeContext'
 
@@ -11,9 +11,11 @@ const { Title } = Typography
 interface HeaderProps {
   onMenuClick?: () => void
   mobileMenuOpen?: boolean
+  onTocClick?: () => void
+  mobileTocOpen?: boolean
 }
 
-export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
+export function Header({ onMenuClick, mobileMenuOpen, onTocClick, mobileTocOpen }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -65,6 +67,25 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
       </div>
       
       <Space size="middle">
+        {/* GitHub 链接 - 桌面端显示 */}
+        <a
+          href="https://github.com/hanwei808/ai-product-production-guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="github-link hide-mobile"
+          style={{ 
+            color: theme === 'light' ? '#1d1d1f' : '#f5f5f7', 
+            fontSize: 20, 
+            display: 'none', // 临时隐藏 
+            alignItems: 'center',
+            transition: 'opacity 0.2s ease',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+        >
+          <GithubOutlined />
+        </a>
+
         {/* 主题切换按钮 */}
         <Tooltip title={theme === 'light' ? '切换到夜间模式' : '切换到白天模式'}>
           <button
@@ -75,23 +96,15 @@ export function Header({ onMenuClick, mobileMenuOpen }: HeaderProps) {
             {theme === 'light' ? <MoonOutlined /> : <SunOutlined />}
           </button>
         </Tooltip>
-        
-        <a
-          href="https://github.com/hanwei808/ai-product-production-guide"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ 
-            color: theme === 'light' ? '#1d1d1f' : '#f5f5f7', 
-            fontSize: 20, 
-            display: 'flex', 
-            alignItems: 'center',
-            transition: 'opacity 0.2s ease',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+
+        {/* 移动端目录按钮 */}
+        <button
+          className="mobile-toc-btn"
+          onClick={onTocClick}
+          aria-label={mobileTocOpen ? '关闭目录' : '打开目录'}
         >
-          <GithubOutlined />
-        </a>
+          {mobileTocOpen ? <CloseOutlined /> : <UnorderedListOutlined />}
+        </button>
       </Space>
     </AntHeader>
   )

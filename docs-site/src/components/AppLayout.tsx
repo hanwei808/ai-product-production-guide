@@ -18,6 +18,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { theme } = useTheme()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mobileTocOpen, setMobileTocOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -32,6 +33,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       setIsMobile(window.innerWidth < 768)
       if (window.innerWidth >= 768) {
         setMobileMenuOpen(false)
+        setMobileTocOpen(false)
       }
     }
 
@@ -40,9 +42,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // 移动端菜单打开时禁止滚动
+  // 移动端菜单或目录打开时禁止滚动
   useEffect(() => {
-    if (mobileMenuOpen) {
+    if (mobileMenuOpen || mobileTocOpen) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -50,14 +52,24 @@ export function AppLayout({ children }: AppLayoutProps) {
     return () => {
       document.body.style.overflow = ''
     }
-  }, [mobileMenuOpen])
+  }, [mobileMenuOpen, mobileTocOpen])
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen)
+    if (mobileTocOpen) setMobileTocOpen(false)
+  }
+
+  const toggleMobileToc = () => {
+    setMobileTocOpen(!mobileTocOpen)
+    if (mobileMenuOpen) setMobileMenuOpen(false)
   }
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false)
+  }
+
+  const closeMobileToc = () => {
+    setMobileTocOpen(false)
   }
 
   return (
@@ -79,13 +91,34 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Header 
           onMenuClick={toggleMobileMenu} 
           mobileMenuOpen={mobileMenuOpen}
+          onTocClick={toggleMobileToc}
+          mobileTocOpen={mobileTocOpen}
         />
         <Layout style={{ marginTop: 0, minHeight: '100vh', paddingTop: 'var(--header-height, 64px)' }}>
           {/* 移动端遮罩层 */}
           <div 
-            className={`mobile-overlay ${mobileMenuOpen ? 'visible' : ''}`}
-            onClick={closeMobileMenu}
+            className={`mobile-overlay ${mobileMenuOpen || mobileTocOpen ? 'visible' : ''}`}
+            onClick={() => { closeMobileMenu(); closeMobileToc(); }}
           />
+          
+          {/* 移动端目录弹出层 */}
+          <div 
+            className={`mobile-toc-drawer ${mobileTocOpen ? 'open' : ''}`}
+            style={{
+              position: 'fixed',
+              top: 'var(--header-height, 64px)',
+              right: 0,
+              width: '85%',
+              maxWidth: '320px',
+              transform: mobileTocOpen ? 'translateX(0)' : 'translateX(100%)',
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              zIndex: 1001,
+              padding: '16px 16px 0 0',
+              overflowY: 'auto',
+            }}
+          >
+            <TableOfContents className="mobile-toc" />
+          </div>
           
           <Sider
             width={280}
